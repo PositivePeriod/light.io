@@ -1,6 +1,6 @@
 import { OrthogonalVector, PolarVector } from "./vector.js";
 
-export class Line {
+class Line {
     constructor(p1, p2) {
         this.p1 = p1.toOrthogonal().copy();
         this.p2 = p2.toOrthogonal().copy();
@@ -35,33 +35,77 @@ export class Line {
     }
 }
 
-export class VisibilityLine extends Line {
+export class VisibilitySegment extends Line {
     constructor(p1, p2) {
         super(p1, p2);
+        this.prop = new Map();
+        this.p1.prop = new Map();
+        this.p2.prop = new Map();
+        this.p1.setProp = this.setProp.bind(this.p1);
+        this.p2.setProp = this.setProp.bind(this.p2);
+        this.p1.getProp = this.getProp.bind(this.p1);
+        this.p2.getProp = this.getProp.bind(this.p2);
     }
 
-    setCenter(center) {
-        var centeredP1 = this.p1.minus(center);
-        var centeredP2 = this.p2.minus(center);
-        this.p1.centeredTheta = centeredP1.theta;
-        this.p2.centeredTheta = centeredP2.theta;
-        var dAngle = this.p2.centeredTheta - this.p1.centeredTheta;
+    setProp(mover, prop, value) {
+        if (!this.prop.has(mover.id)) { this.prop.set(mover.id, {}); }
+        this.prop.get(mover.id)[prop] = value;
+    }
+
+    getProp(mover, prop) {
+        if (!this.prop.has(mover.id)) { this.prop.set(mover.id, {}); }
+        return this.prop.get(mover.id)[prop]
+    }
+
+    setMover(mover) {
+        var cTheta1 = this.p1.minus(mover.pos).theta;
+        var cTheta2 = this.p2.minus(mover.pos).theta;
+        this.p1.setProp(mover, "cTheta", cTheta1);
+        this.p2.setProp(mover, "cTheta", cTheta2);
+
+        var dAngle = cTheta2 - cTheta1;
         if (dAngle <= -Math.PI) { dAngle += 2 * Math.PI; }
         if (dAngle > Math.PI) { dAngle -= 2 * Math.PI; }
-        this.p1.beginLine = dAngle > 0;
-        this.p2.beginLine = dAngle <= 0;
+        this.p1.setProp(mover, "beginLine", dAngle > 0);
+        this.p2.setProp(mover, "beginLine", dAngle <= 0);
     }
 
-    getTriPoints(origin, angle1, angle2) {
+    draw(layer, mover, visualizer) {
+        if (this.obj === undefined) {
+            var v1 = this.getProp(mover, "v1");
+            var v2 = this.getProp(mover, "v2");
+            layer.ctx.beginPath();
+            layer.ctx.moveTo(Math.floor(v1.x), Math.floor(v1.y));
+            layer.ctx.lineTo(Math.floor(v2.x), Math.floor(v2.y));
+            layer.ctx.closePath();
+            layer.ctx.stroke();
+        } else {
+            var pseudoObject = {
+                "pos": this.obj.pos,
+                "rad": this.obj.rad,
+                "startAngle": this.getProp(mover, "startAngle"),
+                "endAngle": this.getProp(mover, "endAngle"),
+            };
+            visualizer.drawArc(layer, pseudoObject);
+        }
+    }
+
+    getVisibleLine(mover, angle1, angle2) {
         // var rad = 1e6; // Should be Infinity
-        // origin.add(new PolarVector(rad, angle1));
-        // origin.add(new PolarVector(rad, angle2));
-        var p1 = origin.add(new PolarVector(1, angle1));
-        var p2 = origin.add(new PolarVector(1, angle2));
-        var l1 = new VisibilityLine(origin, p1);
-        var l2 = new VisibilityLine(origin, p2);
-        var l = new VisibilityLine(this.p1, this.p2);
-        return [l.intesectWith(l1), l.intesectWith(l2)]
+        // center.add(new PolarVector(rad, angle1));
+        // center.add(new PolarVector(rad, angle2));
+        var p1 = mover.pos.add(new PolarVector(1, angle1));
+        var p2 = mover.pos.add(new PolarVector(1, angle2));
+        var l1 = new VisibilitySegment(mover.pos, p1);
+        var l2 = new VisibilitySegment(mover.pos, p2);
+        var l = new VisibilitySegment(this.p1, this.p2);
+        var v1 = l.intesectWith(l1);
+        var v2 = l.intesectWith(l2);
+        v1.line = this;
+        v2.line = this;
+        this.setProp(mover, "v1", v1);
+        this.setProp(mover, "v2", v2);
+        return [v1, v2]
     }
 }
 

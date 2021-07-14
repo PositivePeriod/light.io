@@ -5,8 +5,11 @@ import { Color } from "../util/color.js";
 import { Visualizer } from "../system/visualizer.js";
 
 export class MovableObject extends GameObject {
-    constructor(x, y, keyboard, mouse) {
+    constructor(x, y, keyboard, mouse, id) {
         super(x, y);
+        this.keyboard = keyboard;
+        this.mouse = mouse;
+        this.id = id;
         this.type.push("MovableObject");
         this.color = Color.Gray;
 
@@ -14,7 +17,7 @@ export class MovableObject extends GameObject {
         this.mass = 1;
         this.friction = 0.01;
         this.movingForceMag = 1000;
-
+        
         // External Input
         this.movingKey = {
             "KeyW": { x: 0, y: -1 },
@@ -23,8 +26,8 @@ export class MovableObject extends GameObject {
             "KeyD": { x: 1, y: 0 }
         }
 
-        this.keyboard = keyboard;
-        this.mouse = mouse;
+        this.visibleRange = 200;
+        this.visibleArea = [];
         this.activate();
     }
 
@@ -63,7 +66,7 @@ export class MovableObject extends GameObject {
 
     draw() {
         Visualizer.addFunc("mover", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
-        Visualizer.addFunc("visibilityArea", function(layer, obj) { this.drawVisibilityArea(layer, obj); }, [this]);
-        Visualizer.addFunc("visibilityEdge", function(layer, obj) { this.drawVisibilityEdge(layer, obj); }, [this]);
+        Visualizer.addFunc("visibleArea", function(layer, obj) { this.drawVisibleArea(layer, obj); }, [this]);
+        Visualizer.addFunc("visibleEdge", function(layer, obj) { this.drawVisibleEdge(layer, obj); }, [this]);
     }
 }

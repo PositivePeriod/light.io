@@ -2,7 +2,6 @@ import { ObjectSystem } from "../../system/objectSystem.js";
 import { Visualizer } from "../../system/visualizer.js";
 import { Color } from "../../util/color.js";
 import { pointIsInPoly } from "../../util/line.js";
-import { GameObject } from "../gameObject.js";
 import { MapObject } from "./mapObject.js";
 
 class Panel extends MapObject {
@@ -12,15 +11,19 @@ class Panel extends MapObject {
 
         this.passable = true;
         this.opaque = false;
+        this.observers = [];
     }
 
     update() {
-        var observers = [];
+        this.observers = [];
         ObjectSystem.find("MovableObject").forEach(mover => {
-            var flatPolygon = [].concat(...mover.polygon);
-            if (pointIsInPoly(this.pos, flatPolygon)) { observers.push(mover); }
+            if (mover.visibleArea !== undefined && mover.visibleArea.length !== 0) {
+                var flatPolygon = mover.visibleArea.flat(1);
+                if (pointIsInPoly(this.pos, flatPolygon) && this.pos.minus(mover.pos).r < mover.visibleRange) {
+                    this.observers.push(mover);
+                }
+            }
         });
-        this.observers = observers;
     }
 }
 
@@ -54,6 +57,6 @@ export class AtLeastPanel extends Panel {
     }
 
     draw() {
-        Visualizer.addFunc("mover",function (layer, obj)  { this.drawObject(layer, obj); }, [this]);
+        Visualizer.addFunc("panel", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
     }
 }

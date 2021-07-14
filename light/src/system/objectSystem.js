@@ -1,4 +1,4 @@
-var objecySystem = new class ObjectSystem {
+class ObjectSystem {
     constructor() {
         this.objects = new Map();
     }
@@ -22,6 +22,7 @@ var objecySystem = new class ObjectSystem {
             if (idx > -1) { group.splice(idx, 1); }
         })
     }
-}();
+};
 
+var objecySystem = new ObjectSystem();
 export { objecySystem as ObjectSystem }

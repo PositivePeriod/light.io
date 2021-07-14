@@ -19,11 +19,7 @@ export class Collision {
         }
     }
 
-    static roughCollide(obj1, obj2) {
-        var l = this.RectRect(obj1, obj2);
-        if (l) { console.log(l); }
-        return l
-    }
+    static roughCollide(obj1, obj2) {        return this.RectRect(obj1, obj2)    }
 
     static RectRect(rect1, rect2) {
         var pos = rect1.pos.minus(rect2.pos);
@@ -43,7 +39,6 @@ export class Collision {
         if (circle.pos.x < left) { testX = left; } else if (circle.pos.x > right) { testX = right; }
         if (circle.pos.y < top) { testY = top; } else if (circle.pos.y > bottom) { testY = bottom; }
         var distance2 = (circle.pos.x - testX) ** 2 + (circle.pos.y - testY) ** 2;
-        // console.log('q', this.RectRect(rect, circle), distance2<=circle.rad ** 2)
         return distance2 <= circle.rad ** 2;
     }
 

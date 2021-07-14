@@ -3,7 +3,7 @@ import { Timer } from "../util/timer.js";
 
 // https://developer.mozilla.org/ko/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
 
-var visualizer = new class Visualizer {
+class Visualizer {
     constructor() {
         this.timer = new Timer();
 
@@ -15,8 +15,9 @@ var visualizer = new class Visualizer {
         // static
         this.addLayer("static", { "drawReset": false, "funcReset": false });
         // dynamic
-        this.addLayer("visibilityArea");
-        this.addLayer("visibilityEdge");
+        this.addLayer("visibleArea");
+        this.addLayer("visibleEdge");
+        this.addLayer("panel");
         this.addLayer("mover");
         this.addLayer("time", { "drawReset": true, "funcReset": true });
 
@@ -55,7 +56,7 @@ var visualizer = new class Visualizer {
         layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
     }
 
-    resize(draw = true) {
+    resize() {
         this.stageWidth = document.body.clientWidth;
         this.stageHeight = document.body.clientHeight;
         this.master.canvas.width = this.stageWidth * this.pixelRatio;
@@ -66,35 +67,52 @@ var visualizer = new class Visualizer {
             layer.canvas.height = this.stageHeight * this.pixelRatio;
             layer.ctx.scale(this.pixelRatio, this.pixelRatio);
         })
-        if (draw) { this.draw(); }
+        this.initDraw();
     }
 
     initDraw() {
-        // console.log(this.layersFunc.get("mover"));
         this.resetLayer("master", this.master);
-        ["visibilityArea", "static", "visibilityEdge", "mover", "time"].forEach(name => {
+        ["visibleArea", "static", "visibleEdge", "panel", "mover", "time"].forEach(name => {
             var layer = this.findLayer(name);
             var funcs = this.layersFunc.get(name);
             this.resetLayer(name, layer);
             funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
-
             this.master.ctx.drawImage(layer.canvas, 0, 0);
         });
     }
 
     draw() {
-        // console.log(this.layersFunc.get("mover"));
         this.resetLayer("master", this.master);
-        ["visibilityArea", "static", "visibilityEdge", "mover", "time"].forEach(name => {
+        ["visibleArea", "static", "visibleEdge", "panel", "mover", "time"].forEach(name => {
             var layer = this.findLayer(name);
             var info = this.layersInfo.get(name);
             var funcs = this.layersFunc.get(name);
             if (info.drawReset) {
                 this.resetLayer(name, layer);
-                funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
+                switch (name) {
+                    case "mover":
+                        layer.ctx.save();
+                        layer.ctx.globalCompositeOperation = "screen";
+                        funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
+                        layer.ctx.restore();
+                        break;
+                    default:
+                        funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
+                        break;
+                }
             }
             if (info.funcReset) { this.layersFunc.set(name, []); }
-            this.master.ctx.drawImage(layer.canvas, 0, 0);
+            switch (name) {
+                case "visibleEdge":
+                    this.master.ctx.save();
+                    this.master.ctx.globalCompositeOperation = "screen";
+                    this.master.ctx.drawImage(layer.canvas, 0, 0);
+                    this.master.ctx.restore();
+                    break;
+                default:
+                    this.master.ctx.drawImage(layer.canvas, 0, 0);
+                    break;
+            }
         });
     }
 
@@ -105,7 +123,6 @@ var visualizer = new class Visualizer {
             case "Circle":
             case "Donut":
             case "Tri":
-                // console.log(2345,this["draw" + obj.shape]);
                 this["draw" + obj.shape](layer, obj);
                 break;
             case "Hex":
@@ -129,6 +146,24 @@ var visualizer = new class Visualizer {
 
         layer.ctx.beginPath();
         layer.ctx.arc(x, y, r, 0, 2 * Math.PI);
+        if (stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
+        layer.ctx.restore();
+    }
+
+    drawArc(layer, obj, stroke = true, CCW = true) {
+        var x = Math.floor(obj.pos.x);
+        var y = Math.floor(obj.pos.y);
+        var r = Math.floor(obj.rad);
+        var startAngle = obj.startAngle;
+        var endAngle = obj.endAngle;
+        var color = obj.color || Color.White;
+
+        layer.ctx.save();
+        layer.ctx.fillStyle = color.HEX();
+        layer.ctx.strokeStyle = color.HEX();
+
+        layer.ctx.beginPath();
+        layer.ctx.arc(x, y, r, startAngle, endAngle, CCW);
         if (stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
@@ -215,46 +250,42 @@ var visualizer = new class Visualizer {
         layer.ctx.restore();
     }
 
-    drawVisibilityArea(layer, mover) {
-        let gradient = layer.ctx.createRadialGradient(mover.pos.x, mover.pos.y, mover.rad, mover.pos.x, mover.pos.y, 500);
+    drawVisibleArea(layer, mover) {
+        var polygon = mover.visibleArea;
+        if (polygon === undefined || polygon.length === 0) { return }
+
+        let gradient = layer.ctx.createRadialGradient(mover.pos.x, mover.pos.y, mover.rad, mover.pos.x, mover.pos.y, mover.visibleRange);
         var hsl = mover.color.hsl;
         gradient.addColorStop(0, `hsla(${hsl[0]}, ${hsl[1]*100}%, 40%, 1)`); // start
         gradient.addColorStop(1, `hsla(${hsl[0]}, ${hsl[1]*100}%, 0%, 0)`); // end
 
-        var polygon = mover.polygon || [];
-        if (polygon.length === 0) { return }
 
         layer.ctx.save();
         layer.ctx.globalCompositeOperation = "screen";
         layer.ctx.fillStyle = gradient;
         layer.ctx.beginPath();
         layer.ctx.moveTo(Math.floor(polygon[0][0].x), Math.floor(polygon[0][0].y));
-        polygon.forEach(tri => {
-            layer.ctx.lineTo(Math.floor(tri[0].x), Math.floor(tri[0].y));
-            layer.ctx.lineTo(Math.floor(tri[1].x), Math.floor(tri[1].y));
+        polygon.forEach(line => {
+            layer.ctx.lineTo(Math.floor(line[0].x), Math.floor(line[0].y));
+            layer.ctx.lineTo(Math.floor(line[1].x), Math.floor(line[1].y));
         })
         layer.ctx.closePath();
         layer.ctx.fill();
         layer.ctx.restore();
     }
 
-    drawVisibilityEdge(layer, mover) {
-        var polygon = mover.polygon || [];
-        if (polygon.length === 0) { return }
+    drawVisibleEdge(layer, mover) {
+        var polygon = mover.visibleArea;
+        if (polygon === undefined || polygon.length === 0) { return }
 
         layer.ctx.save();
         // layer.ctx.globalCompositeOperation = "lighter";
         layer.ctx.strokeStyle = Color.White.HEX();
-        layer.ctx.lineWidth = 0;
-        polygon.forEach(tri => {
-            layer.ctx.beginPath();
-            layer.ctx.moveTo(Math.floor(tri[0].x), Math.floor(tri[0].y));
-            layer.ctx.lineTo(Math.floor(tri[1].x), Math.floor(tri[1].y));
-            layer.ctx.closePath();
-            layer.ctx.stroke();
-        })
+
+        polygon.forEach(line => { line[0].line.draw(layer, mover, this); })
         layer.ctx.restore();
     }
-}();
+};
 
+var visualizer = new Visualizer();
 export { visualizer as Visualizer }

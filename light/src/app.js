@@ -1,3 +1,3 @@
-import { Game } from "./shadowCasting.js";
+import { Game } from "./game.js";
 
 window.onload = () => { new Game(); }
