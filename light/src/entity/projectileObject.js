@@ -1,5 +1,6 @@
 import { PolarVector } from "../util/vector.js";
 import { GameObject } from "./gameObject.js";
+import { ObjectSystem } from "./system/objectSystem.js"
 
 export class ProjectileObject extends GameObject {
     constructor(x, y, velocity, option) {
@@ -21,7 +22,7 @@ export class ProjectileObject extends GameObject {
     }
 
     burst(visualizer) {
-        GameObject.system.find("MovableObject").forEach(player => {
+        ObjectSystem.find("MovableObject").forEach(player => {
             var pos = player.pos.minus(this.pos);
             if (pos.r < this.option.range) {
                 player.shield -= this.option.damage * (1 - pos.r / this.option.range);
@@ -30,6 +31,6 @@ export class ProjectileObject extends GameObject {
             }
         })
         // visualizer.drawCircle(this.pos.x, this.pos.y, this.option.range, this.color);
-        GameObject.system.remove(this);
+        ObjectSystem.remove(this);
     }
 }

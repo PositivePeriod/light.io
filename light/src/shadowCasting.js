@@ -1,35 +1,39 @@
-import { Visualizer } from "./util/visualizer.js";
+import { Visualizer } from "./system/visualizer.js";
 import { KeyboardManager, MouseManager } from "./util/inputManager.js";
 import { MovableObject } from "./entity/movableObject.js";
-import { GameObject } from "./entity/gameObject.js";
 import { RigidBackground } from "./entity/mapObject/rigidBg.js";
-import { OrthogonalVector, Line, getTrianglePoints, segmentInFrontOf } from "./util/vector.js";
+import { OrthogonalVector, PolarVector } from "./util/vector.js";
+import { VisibilityLine, segmentInFrontOf } from "./util/line.js";
+import { ObjectSystem } from "./system/objectSystem.js"
 
-import { mapData } from "./data/map1.js"
+import { mapData } from "./data/map2.js"
 import { AtLeastPanel } from "./entity/mapObject/panel.js";
+import { Color } from "./util/color.js";
 
 export class Game {
     constructor() {
         this.fps = 10;
         this.dt = 1 / this.fps;
-
-        this.visualizer = new Visualizer();
+        this.initGameSize();
         this.initGameObjects();
         setInterval(this.update.bind(this), Math.round(1000 / this.fps));
     }
 
-    initGameObjects() {
-        var stageWidth = this.visualizer.stageWidth;
-        var stageHeight = this.visualizer.stageHeight;
+    initGameSize() {
+        var stageWidth = Visualizer.stageWidth;
+        var stageHeight = Visualizer.stageHeight;
         this.mapWidth = mapData.width;
         this.mapHeight = mapData.height;
         this.gridSize = Math.min(stageWidth / this.mapWidth, stageHeight / this.mapHeight) * 0.6;
         this.startX = (stageWidth - this.gridSize * this.mapWidth) / 2;
         this.startY = (stageHeight - this.gridSize * this.mapHeight) / 2;
+    }
 
-        var playerColor = ["hsl(0, 100%, 50%)", "hsl(120, 100%, 50%)", "hsl(240, 100%, 50%)"];
-        var playerCounter = 0;
-
+    initGameObjects() {
+        var moverColor = [Color.Red, Color.Blue, Color.Green];
+        var moverCounter = 0;
+        var keyboard = new KeyboardManager();
+        var mouse = new MouseManager();
         for (let x = 0; x < this.mapWidth; x++) {
             for (let y = 0; y < this.mapHeight; y++) {
                 var blockType = mapData.map[y][x].slice(0, 1);
@@ -37,57 +41,89 @@ export class Game {
                 var posY = this.startY + this.gridSize * (y + 0.5);
                 switch (blockType) {
                     case "W":
-                        var block = new RigidBackground(0, 0).makeShape("Rect", { "x": posX, "y": posY, "width": this.gridSize, "height": this.gridSize, "color": "#000000" });
-                        GameObject.system.add(block);
+                        var wall = new RigidBackground(posX, posY)
+                        wall.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                        ObjectSystem.add(wall);
                         break;
-                    case "S":
-                        this.keyboard = new KeyboardManager();
-                        this.mouse = new MouseManager();
-                        var color = playerColor[playerCounter];
-                        playerCounter += 1;
-                        var player = new MovableObject(posX, posY, this.keyboard, this.mouse).makeShape("Circle", { "rad": this.gridSize * 0.2, "color": color });
-                        GameObject.system.add(player);
+                    case "M":
+                        var color = moverColor[moverCounter++];
+                        var mover = new MovableObject(posX, posY, keyboard, mouse)
+                        mover.makeShape("Circle", { "rad": this.gridSize * 0.2, "color": color });
+                        ObjectSystem.add(mover);
                         break;
                     case "P":
-                        var panel = new AtLeastPanel(posX, posY).makeShape("Rect", { "width": this.gridSize * 0.2, "height": this.gridSize * 0.2, "color": "#000000" });
-                        GameObject.system.add(panel);
+                        var panel = new AtLeastPanel(posX, posY)
+                        panel.makeShape("Rect", { "width": this.gridSize * 0.2, "height": this.gridSize * 0.2, "color": Color.Black });
+                        ObjectSystem.add(panel);
                         break;
-                    case "F":
+                    case "C":
+                        var circle = new RigidBackground(posX, posY)
+                        circle.makeShape("Circle", { "rad": this.gridSize * 0.5, "color": Color.Black });
+                        ObjectSystem.add(circle);
                         break;
-                    case "B":
+                    case "B": // Background
+                        break;
                     default:
                         break;
                 }
             }
         }
+        console.log(ObjectSystem.objects);
+        ObjectSystem.find("GameObject").forEach(obj => { obj.draw(); })
+        Visualizer.initDraw();
     }
 
     update() {
-        var movers = GameObject.system.find("MovableObject");
-        var maps = GameObject.system.find("MapObject");
+        var movers = ObjectSystem.find("MovableObject");
+        var maps = ObjectSystem.find("MapObject");
 
         movers.forEach(mover => { mover.update(this.dt); });
-        var walls = this.getWalls();
+        var staticWalls = this.getStaticWalls();
         movers.forEach(mover => {
-            mover.polygon = this.rayTracing(mover.pos, walls);
+            var dynamicWalls = this.getDynamicWalls(mover.pos);
+            mover.polygon = this.rayTracing(mover.pos, [...staticWalls, ...dynamicWalls]);
         })
         maps.forEach(map => { map.update(); });
-
-
-        this.visualizer.clearWhole();
-        movers.forEach(mover => { this.visualizer.drawVisibility(mover); })
-        this.visualizer.draw(false);
+        Visualizer.draw();
     }
 
-    getWalls() {
+    getStaticWalls() {
         var walls = [];
-        GameObject.system.find("MapObject").forEach(obj => {
-            if (!(obj instanceof AtLeastPanel)) {
-                var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
-                var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
-                var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
-                var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
-                walls.push(...[new Line(p1, p3), new Line(p1, p2), new Line(p3, p4), new Line(p2, p4)]);
+        ObjectSystem.find("GameObject").forEach(obj => {
+            if (obj.opaque) {
+                switch (obj.shape) {
+                    case "Rect":
+                        var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
+                        var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
+                        var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
+                        var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
+                        walls.push(...[new VisibilityLine(p1, p3), new VisibilityLine(p1, p2), new VisibilityLine(p3, p4), new VisibilityLine(p2, p4)]);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        })
+        // var p1 = new OrthogonalVector(Visualizer.stageWidth / 2 - 100, Visualizer.stageHeight / 2 - 100);
+        // var p2 = new OrthogonalVector(Visualizer.stageWidth / 2 + 100, Visualizer.stageHeight / 2 + 100);
+        // walls.push(new VisibilityLine(p1, p2));
+        return walls
+    }
+
+    getDynamicWalls(center) {
+        var walls = [];
+        ObjectSystem.find("GameObject").forEach(obj => {
+            if (obj.opaque) {
+                switch (obj.shape) {
+                    case "Circle":
+                        var dPos = center.minus(obj.pos);
+                        var angle = Math.acos(obj.rad / dPos.r);
+                        var p1 = obj.pos.add(new PolarVector(obj.rad, dPos.theta + angle));
+                        var p2 = obj.pos.add(new PolarVector(obj.rad, dPos.theta - angle));
+                        walls.push(new VisibilityLine(p1, p2));
+                    default:
+                        break;
+                }
             }
         })
         return walls
@@ -103,8 +139,8 @@ export class Game {
         var endPointCompare = (p1, p2) => {
             if (p1.centeredTheta > p2.centeredTheta) return 1;
             if (p1.centeredTheta < p2.centeredTheta) return -1;
-            if (!p1.beginSegment && p2.beginSegment) return 1;
-            if (p1.beginSegment && !p2.beginSegment) return -1;
+            if (!p1.beginLine && p2.beginLine) return 1;
+            if (p1.beginLine && !p2.beginLine) return -1;
             return 0;
         }
         endPoints.sort(endPointCompare);
@@ -118,25 +154,25 @@ export class Game {
                 let endpoint = endPoints[i];
                 let openSegment = openSegments[0];
 
-                if (endpoint.beginSegment) {
-                    var segment = openSegments.find(segment => { return !segment || !segmentInFrontOf(endpoint.segment, segment, center) });
+                if (endpoint.beginLine) {
+                    var segment = openSegments.find(segment => { return !segment || !segmentInFrontOf(endpoint.line, segment, center) });
 
                     // push
                     if (!segment) {
-                        openSegments.push(endpoint.segment);
+                        openSegments.push(endpoint.line);
                     } else {
                         var index = openSegments.indexOf(segment);
-                        openSegments.splice(index, 0, endpoint.segment);
+                        openSegments.splice(index, 0, endpoint.line);
                     }
                 } else {
                     // remove
-                    var index = openSegments.indexOf(endpoint.segment)
+                    var index = openSegments.indexOf(endpoint.line)
                     if (index > -1) openSegments.splice(index, 1);
                 }
 
                 if (openSegment !== openSegments[0]) {
                     if (pass === 1) {
-                        var trianglePoints = getTrianglePoints(center, beginAngle, endpoint.centeredTheta, openSegment);
+                        var trianglePoints = openSegment.getTriPoints(center, beginAngle, endpoint.centeredTheta);
                         output.push(trianglePoints);
                     }
                     beginAngle = endpoint.centeredTheta;

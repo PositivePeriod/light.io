@@ -1,3 +1,4 @@
+import { Color } from "../../util/color.js";
 import { SHAPE } from "../../util/constant.js";
 import { PolarVector } from "../../util/vector.js";
 import { MapObject } from "./mapObject.js";
@@ -8,7 +9,7 @@ export class BouncyBackground extends MapObject {
         this.type.push("BouncyBackground");
         this.bounce = bounce || 1;
 
-        this.color = "#444444";
+        this.color = new Color("hex", "#444444");
     }
 
     collide(other) {

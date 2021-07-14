@@ -1,4 +1,7 @@
-import { pointIsInPoly, pointIsInPoly2 } from "../../util/vector.js";
+import { ObjectSystem } from "../../system/objectSystem.js";
+import { Visualizer } from "../../system/visualizer.js";
+import { Color } from "../../util/color.js";
+import { pointIsInPoly } from "../../util/line.js";
 import { GameObject } from "../gameObject.js";
 import { MapObject } from "./mapObject.js";
 
@@ -8,11 +11,12 @@ class Panel extends MapObject {
         this.type.push("Panel");
 
         this.passable = true;
+        this.opaque = false;
     }
 
     update() {
         var observers = [];
-        GameObject.system.find("MovableObject").forEach(mover => {
+        ObjectSystem.find("MovableObject").forEach(mover => {
             var flatPolygon = [].concat(...mover.polygon);
             if (pointIsInPoly(this.pos, flatPolygon)) { observers.push(mover); }
         });
@@ -29,18 +33,27 @@ export class AtLeastPanel extends Panel {
     }
 
     update() {
-        // var getRandomInt = (min, max) => {
-        //     min = Math.ceil(min);
-        //     max = Math.floor(max);
-        //     return Math.floor(Math.random() * (max - min)) + min; //최댓값은 제외, 최솟값은 포함
-        // }
         super.update();
-        console.log('ob', this.observers, this.observers.length);
         if (this.observers.length === 0) {
-            this.color = "#FFFFFF";
+            this.color = Color.White;
         } else {
-            var index = Math.floor(Math.random() * this.observers.length);
-            this.color = this.observers[index].color;
+            var r = 0;
+            var g = 0;
+            var b = 0;
+            this.observers.forEach(observer => {
+                var rgb = observer.color.rgb;
+                r += rgb[0];
+                g += rgb[1];
+                b += rgb[2];
+            })
+            r /= this.observers.length;
+            g /= this.observers.length;
+            b /= this.observers.length;
+            this.color = new Color('rgb', r, g, b);
         }
+    }
+
+    draw() {
+        Visualizer.addFunc("mover",function (layer, obj)  { this.drawObject(layer, obj); }, [this]);
     }
 }

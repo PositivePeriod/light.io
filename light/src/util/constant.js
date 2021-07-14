@@ -7,10 +7,8 @@ export const SHAPE = Object.freeze(new Map([
 
 ]));
 
-export const OBJECT = Object.freeze(new Map([
-    ["GameObject", ["MapObject", "PlayerObject", "ProjectileObject", "MovableObject"]],
-    ["MapObject", ["BouncyBackground", "RigidBackground", "Panel", "PullBackground"]],
-    ["Panel", ["ShieldPanel", "WeakAttackPanel", "StrongAttackPanel", "TeleportPanel"]],
-]));
-
-// Not Correct
+// export const OBJECT = Object.freeze(new Map([
+//     ["GameObject", ["MapObject", "ProjectileObject", "MovableObject"]],
+//     ["MapObject", ["BouncyBackground", "RigidBackground", "Panel", "PullBackground"]],
+//     ["Panel", ["ShieldPanel", "WeakAttackPanel", "StrongAttackPanel", "TeleportPanel"]],
+// ]));

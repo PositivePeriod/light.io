@@ -1,13 +1,14 @@
+import { Color } from "../../util/color.js";
 import { OrthogonalVector } from "../../util/vector.js";
 import { MapObject } from "./mapObject.js";
 
 export class RigidBackground extends MapObject {
     constructor(x, y, accuracy) {
         super(x, y);
-        this.type.push("BouncyBackground");
+        this.type.push("RigidBackground");
         this.accuracy = accuracy || 10;
 
-        this.color = "#444444";
+        this.color = new Color("hex", "#444444");
     }
 
     collide(other, dt) {

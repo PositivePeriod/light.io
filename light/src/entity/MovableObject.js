@@ -1,16 +1,19 @@
 import { GameObject } from "./gameObject.js";
+import { ObjectSystem } from "../system/objectSystem.js"
 import { OrthogonalVector, PolarVector } from "../util/vector.js";
+import { Color } from "../util/color.js";
+import { Visualizer } from "../system/visualizer.js";
 
 export class MovableObject extends GameObject {
     constructor(x, y, keyboard, mouse) {
         super(x, y);
         this.type.push("MovableObject");
-        this.color = "#000000";
+        this.color = Color.Gray;
 
         // Kinematics
         this.mass = 1;
-        this.friction = 1e-2;
-        this.movingForceMag = 400;
+        this.friction = 0.01;
+        this.movingForceMag = 1000;
 
         // External Input
         this.movingKey = {
@@ -47,7 +50,7 @@ export class MovableObject extends GameObject {
         super.update(dt);
 
         var collidedObj = [];
-        GameObject.system.find("MapObject").forEach(obj => {
+        ObjectSystem.find("GameObject").forEach(obj => {
             if (!obj.passable && this.isCollidedWith(obj)) {
                 obj.collide(this, dt);
                 collidedObj.push(obj);
@@ -56,5 +59,11 @@ export class MovableObject extends GameObject {
         collidedObj.forEach(obj => { obj.collideAfter(this); });
 
         this.velocity.multiplyBy(Math.pow(this.friction, dt));
+    }
+
+    draw() {
+        Visualizer.addFunc("mover", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
+        Visualizer.addFunc("visibilityArea", function(layer, obj) { this.drawVisibilityArea(layer, obj); }, [this]);
+        Visualizer.addFunc("visibilityEdge", function(layer, obj) { this.drawVisibilityEdge(layer, obj); }, [this]);
     }
 }

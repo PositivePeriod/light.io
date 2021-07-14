@@ -1,64 +1,28 @@
 import { SHAPE } from "../util/constant.js";
 import { OrthogonalVector } from "../util/vector.js";
 
-export class ObjectSystem {
-    constructor() {
-        this.objects = new Map();
-    }
-
-    add(obj) {
-        obj.type.forEach(type => {
-            if (this.objects.has(type)) {
-                this.objects.get(type).push(obj);
-            } else { this.objects.set(type, [obj]) }
-        })
-    }
-
-    find(type) {
-        return this.objects.get(type) || [];
-    }
-
-    remove(obj) {
-        obj.type.forEach(type => {
-            var group = this.objects.get(type);
-            var idx = group.indexOf(obj);
-            if (idx > -1) { group.splice(idx, 1); }
-        })
-    }
-
-    // static findClosestAnyObject(target) { // TODO garbage? no use!
-    //     var minimum = { d: float("inf"), obj: null };
-    //     this.objects.forEach(group => {
-    //         var minimal = this.findClosest(group, target);
-    //         if (minimum.d > minimal.d) { // TOOD what if === ? (길이가 서로 같은 경우)
-    //             minimum.d = minimal.d;
-    //             minimum.obj = minimal.obj;
-    //         };
-    //     })
-    //     return minimum
-    // }
-
-    // static findClosest(objects, target) {
-    //     var minimum = { d: float("inf"), obj: null };
-    //     objects.forEach(object => {
-    //         var d = object.pos.minus(target.pos).r;
-    //         if (minimum.d > d) { // TOOD what if === ? (길이가 서로 같은 경우)
-    //             minimum.d = d;
-    //             minimum.obj = object;
-    //         };
-    //     })
-    //     return minimum
-    // }
+export class Collision {
+    constructor() {}
 
     static isCollided(obj1, obj2) {
         if (SHAPE.has(obj1.shape) && SHAPE.has(obj2.shape)) {
             var notReversed = SHAPE.get(obj1.shape).hierarchy <= SHAPE.get(obj2.shape).hierarchy;
             var functionName = notReversed ? obj1.shape + obj2.shape : obj2.shape + obj1.shape;
-            // console.log(functionName);
+
+            var isRoughCollided = this.roughCollide(obj1, obj2);
+            if (!isRoughCollided) {return false}
+            if (functionName === "RectRect") { return isRoughCollided }
+
             return notReversed ? this[functionName](obj1, obj2) : this[functionName](obj2, obj1);
         } else {
             console.error("Impossible object shape; ", obj1.shape, obj2.shape, obj1, obj2);
         }
+    }
+
+    static roughCollide(obj1, obj2) {
+        var l = this.RectRect(obj1, obj2);
+        if (l) { console.log(l); }
+        return l
     }
 
     static RectRect(rect1, rect2) {
@@ -79,6 +43,7 @@ export class ObjectSystem {
         if (circle.pos.x < left) { testX = left; } else if (circle.pos.x > right) { testX = right; }
         if (circle.pos.y < top) { testY = top; } else if (circle.pos.y > bottom) { testY = bottom; }
         var distance2 = (circle.pos.x - testX) ** 2 + (circle.pos.y - testY) ** 2;
+        // console.log('q', this.RectRect(rect, circle), distance2<=circle.rad ** 2)
         return distance2 <= circle.rad ** 2;
     }
 
@@ -127,9 +92,10 @@ export class ObjectSystem {
     d
 
     static RectTri(rect, tri) {
-        if (!this.RectRect(rect, tri)) {
-            return false
-        }
+        // Already checked by roughCollide
+        // if (!this.RectRect(rect, tri)) {
+        //     return false
+        // }
         var dir = new OrthogonalVector(tri.dir[0], tri.dir[1]).toPolar();
         dir.rotateBy(Math.PI / 2);
         var normal = new OrthogonalVector(dir.x * tri.width, dir.y * tri.height).toPolar();
@@ -157,7 +123,7 @@ export class ObjectSystem {
         }
         var verticeDistance1 = pos.add(new OrthogonalVector(-tri.dir[0] * tri.width / 2, tri.dir[1] * tri.height / 2)).r2;
         var verticeDistance2 = pos.add(new OrthogonalVector(tri.dir[0] * tri.width / 2, -tri.dir[1] * tri.height / 2)).r2;
-        return !(normalDistance > 0 && Math.abs(diagonalDistance) > diagonal.r / 2 && circle.rad**2 < Math.min(verticeDistance1, verticeDistance2))
+        return !(normalDistance > 0 && Math.abs(diagonalDistance) > diagonal.r / 2 && circle.rad ** 2 < Math.min(verticeDistance1, verticeDistance2))
     }
 
     static DonutTri(donut, tri) {

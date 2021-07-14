@@ -1,10 +1,10 @@
+import { Color } from "../util/color.js";
 import { SHAPE } from "../util/constant.js";
 import { OrthogonalVector } from "../util/vector.js";
-import { ObjectSystem } from "./objectSystem.js";
+import { Collision } from "../system/collision.js";
+import { Visualizer } from "../system/visualizer.js";
 
 export class GameObject {
-    static system = new ObjectSystem();
-
     constructor(x, y) {
         this.type = ["GameObject"];
 
@@ -16,9 +16,10 @@ export class GameObject {
 
         // Visualize
         this.shape = null; //
-        this.color = "#000000";
+        this.color = Color.Black;
         this.passable = true; //
         this.movable = true; //
+        this.opaque = false;
     }
 
     applyForce(force) {
@@ -37,28 +38,27 @@ export class GameObject {
     }
 
     makeShape(shape, option) {
-        if (!SHAPE.has(shape)) {
-            console.error("Impossible object shape; ", shape);
-            return this
-        }
+        if (!SHAPE.has(shape)) { console.error("Impossible object shape; ", shape); return; }
         SHAPE.get(shape).property.forEach(prop => {
-            if (option[prop] === undefined) {
-                console.error("Not enough property in option; ", prop, option[prop], option);
-                return this
-            }
-        });
-
-        SHAPE.get(shape).property.forEach(prop => { this[prop] = option[prop] })
+            if (option[prop] === undefined) { console.error("Not enough property in option; ", prop, option[prop], option); return; } else { this[prop] = option[prop] }
+        })
+        switch (shape) { // for roughCollide
+            case "Rect":
+            case "Tri":
+                break;
+            case "Circle":
+            case "Hex":
+                this.width = 3 * this.rad;
+                this.height = 3 * this.rad;
+                break;
+            case "Donut":
+                this.width = 3 * this.outerR;
+                this.height = 3 * this.outerR;
+                break;
+        }
         this.shape = shape;
-        if (option.x && option.y) {
-            this.setPos(option.x, option.y);
-            if (shape === "Rect" && option.center === false) {
-                this.setPos(option.x + option.width / 2, this.y = option.y + option.height / 2);
-            }
-        }
-        if (option.color) {
-            this.color = option.color;
-        }
+        if (option.x && option.y) { this.setPos(option.x, option.y); }
+        if (option.color) { this.color = option.color; }
         if (shape === "Hex") {
             Object.defineProperty(this, "pseudoObjects", {
                 get: function() {
@@ -72,10 +72,13 @@ export class GameObject {
                 }
             });
         }
-        return this
+    }
+
+    draw() {
+        Visualizer.addFunc("static", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
     }
 
     isCollidedWith(other) {
-        return ObjectSystem.isCollided(this, other);
+        return Collision.isCollided(this, other);
     }
 }
