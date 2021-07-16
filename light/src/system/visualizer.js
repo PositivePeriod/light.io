@@ -39,6 +39,7 @@ class Visualizer {
 
     addLayer(name, option) {
         var canvas = document.createElement("canvas");
+        // canvas.setAttribute("id", name);
         // document.body.appendChild(canvas);
         var ctx = canvas.getContext("2d");
         this.layers.set(name, { "canvas": canvas, "ctx": ctx });
@@ -73,6 +74,7 @@ class Visualizer {
     initDraw() {
         this.resetLayer("master", this.master);
         ["visibleArea", "static", "visibleEdge", "panel", "mover", "time"].forEach(name => {
+        // ["visibleArea", "visibleEdge", "panel", "mover", "time"].forEach(name => {
             var layer = this.findLayer(name);
             var funcs = this.layersFunc.get(name);
             this.resetLayer(name, layer);
@@ -105,7 +107,7 @@ class Visualizer {
             switch (name) {
                 case "visibleEdge":
                     this.master.ctx.save();
-                    this.master.ctx.globalCompositeOperation = "screen";
+                    // this.master.ctx.globalCompositeOperation = "screen";
                     this.master.ctx.drawImage(layer.canvas, 0, 0);
                     this.master.ctx.restore();
                     break;
@@ -154,16 +156,16 @@ class Visualizer {
         var x = Math.floor(obj.pos.x);
         var y = Math.floor(obj.pos.y);
         var r = Math.floor(obj.rad);
-        var startAngle = obj.startAngle;
-        var endAngle = obj.endAngle;
+        var CCWAngle = obj.CCWAngle;
+        var CWAngle = obj.CWAngle;
         var color = obj.color || Color.White;
-
+        
         layer.ctx.save();
         layer.ctx.fillStyle = color.HEX();
         layer.ctx.strokeStyle = color.HEX();
 
         layer.ctx.beginPath();
-        layer.ctx.arc(x, y, r, startAngle, endAngle, CCW);
+        layer.ctx.arc(x, y, r, CCWAngle, CWAngle, CCW);
         if (stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
@@ -251,6 +253,7 @@ class Visualizer {
     }
 
     drawVisibleArea(layer, mover) {
+
         var polygon = mover.visibleArea;
         if (polygon === undefined || polygon.length === 0) { return }
 
@@ -266,6 +269,11 @@ class Visualizer {
         layer.ctx.beginPath();
         layer.ctx.moveTo(Math.floor(polygon[0][0].x), Math.floor(polygon[0][0].y));
         polygon.forEach(line => {
+            layer
+            layer.ctx.moveTo(Math.floor(line[0].x), Math.floor(line[0].y));
+            layer.ctx.lineTo(Math.floor(line[1].x), Math.floor(line[1].y));
+        })
+        polygon.forEach(line => {
             layer.ctx.lineTo(Math.floor(line[0].x), Math.floor(line[0].y));
             layer.ctx.lineTo(Math.floor(line[1].x), Math.floor(line[1].y));
         })
@@ -279,10 +287,12 @@ class Visualizer {
         if (polygon === undefined || polygon.length === 0) { return }
 
         layer.ctx.save();
-        // layer.ctx.globalCompositeOperation = "lighter";
-        layer.ctx.strokeStyle = Color.White.HEX();
+        layer.ctx.globalCompositeOperation = "screen";
+        layer.ctx.strokeStyle = mover.color.HEX();
 
-        polygon.forEach(line => { line[0].line.draw(layer, mover, this); })
+        polygon.forEach(line => {
+            line[0].line.draw(layer, mover, this);
+        })
         layer.ctx.restore();
     }
 };

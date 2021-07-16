@@ -12,6 +12,11 @@ export class Color {
     static Blue = new Color("hex", "#2196F3");
     static Green = new Color("hex", "#4CAF50");
 
+    static random() {
+        var color = '#' + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0');
+        return new Color("hex", color)
+    }
+
 
     static isValidColor(string) {
         var s = new Option().style;
@@ -83,20 +88,18 @@ export class Color {
     }
 
     constructor(type, ...color) {
+        this.type = type;
         switch (type) {
-            case "HSL":
             case "hsl":
                 this.hsl = color.slice(0, 3);
                 this.rgb = Color.HSLtoRGB(...this.hsl);
                 this.hex = Color.RGBtoHEX(...this.rgb);
                 break;
-            case "RGB":
             case "rgb":
                 this.rgb = color.slice(0, 3);
                 this.hsl = Color.RGBtoHSL(...this.rgb);
                 this.hex = Color.RGBtoHEX(...this.rgb);
                 break;
-            case "HEX":
             case "hex":
                 this.hex = color[0];
                 this.rgb = Color.HEXtoRGB(this.hex);
@@ -130,5 +133,9 @@ export class Color {
 
     HEX() {
         return this.hex
+    }
+
+    represent() {
+        return this[this.type]
     }
 }

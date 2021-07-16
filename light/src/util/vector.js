@@ -39,6 +39,7 @@ export class Vector {
         // this : other = t : 1-t
         return new OrthogonalVector(this.x * (1 - t) + other.x * t, this.y * (1 - t) + other.y * t)
     }
+
 }
 
 export class PolarVector extends Vector {
@@ -187,4 +188,8 @@ export class OrthogonalVector extends Vector {
         this.y *= scalar;
         this.checkZero();
     }
+}
+
+export function angleIsBetween(CCW, angle, CW) {
+    return (CCW < angle && angle < CW) || (angle < CW && CW < CCW) || (CW < CCW && CCW < angle)
 }

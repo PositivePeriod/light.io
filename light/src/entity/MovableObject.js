@@ -3,12 +3,13 @@ import { ObjectSystem } from "../system/objectSystem.js"
 import { OrthogonalVector, PolarVector } from "../util/vector.js";
 import { Color } from "../util/color.js";
 import { Visualizer } from "../system/visualizer.js";
+import { KeyboardManager, MouseManager } from "../util/inputManager.js";
 
 export class MovableObject extends GameObject {
-    constructor(x, y, keyboard, mouse, id) {
+    constructor(x, y, id) {
         super(x, y);
-        this.keyboard = keyboard;
-        this.mouse = mouse;
+        this.keyboard = new KeyboardManager();
+        this.mouse = new MouseManager();
         this.id = id;
         this.type.push("MovableObject");
         this.color = Color.Gray;
@@ -26,7 +27,7 @@ export class MovableObject extends GameObject {
             "KeyD": { x: 1, y: 0 }
         }
 
-        this.visibleRange = 200;
+        this.visibleRange = 300;
         this.visibleArea = [];
         this.activate();
     }

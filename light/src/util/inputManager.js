@@ -54,6 +54,14 @@ export class MouseManager {
         this.isPressed = false;
     }
 
+    getPoint() {
+        return new Promise(function(resolve, reject) {
+            window.addEventListener("mouseup", function() {
+                resolve({ "downX": this.downX, "downY": this.downY, "upX": this.upX, "upY": this.upY });
+            }.bind(this));
+        }.bind(this));
+    }
+
     handler(e) {
         const x = e.offsetX;
         const y = e.offsetY;
@@ -67,16 +75,14 @@ export class MouseManager {
                 this.downX = x;
                 this.downY = y;
                 this.isPressed = true;
-                if (e.type in this.mouseCallback) {
-                    this.mouseCallback[e.type](this.downX, this.downY);
-                }
+                if (e.type in this.mouseCallback) { this.mouseCallback[e.type](this.downX, this.downY); }
                 break;
             case "mouseup":
+                this.upX = x;
+                this.upY = y;
                 this.isPressed = false;
                 if (e.type in this.mouseCallback) {
-                    this.mouseCallback[e.type](this.downX, this.downY, x, y);
-                    this.downX = null;
-                    this.downY = null;
+                    this.mouseCallback[e.type](this.downX, this.downY, this.upX, this.upY);
                 }
                 break;
             case "click":
@@ -93,13 +99,13 @@ export class MouseManager {
     }
 
     activate() {
-        window.addEventListener("mousemove", this.handler.bind(this));
+        // window.addEventListener("mousemove", this.handler.bind(this));
         window.addEventListener("mousedown", this.handler.bind(this));
         window.addEventListener("mouseup", this.handler.bind(this));
     }
 
     deactivate() {
-        window.addEventListener("mousemove", this.handler.bind(this));
+        // window.addEventListener("mousemove", this.handler.bind(this));
         window.removeEventListener("mousedown", this.handler.bind(this));
         window.removeEventListener("mouseup", this.handler.bind(this));
     }

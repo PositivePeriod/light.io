@@ -47,7 +47,8 @@ class Shadow {
                 funcs.forEach((input) => { input.func.bind(this)(group, mover, ...input.arg); })
             }
             if (info.funcReset) { this.groupsFunc.set(name, []); }
-        });  return this.groups
+        });
+        return this.groups
     }
 
     endPointCompare(p1, p2) { // endPointCompare
@@ -63,13 +64,32 @@ class Shadow {
     }
 
     calcVisibleArea(mover) {
-        var points = [];
+        var segments = [];
         this.getWallGroups(mover).forEach(group => {
             group.forEach(segment => {
                 segment.setMover(mover);
-                points.push(segment.p1, segment.p2);
+                segments.push(segment);
             })
         })
+
+        var count = 0;
+        for (let i = 0; i < segments.length-1; i += 1) {
+            var flag = false;
+            for (let j = i+1; j < segments.length; j += 1) {
+                var si = segments[i];
+                var sj = segments[j];
+                if (si === null || sj === null) { continue }
+                if (si.same(sj)) {
+                    // console.log('flag', i, j);
+                    flag = true;
+                    segments[j] = null;
+                }
+            }
+            if (flag) { count++; }
+        }
+        var points = segments.map((segment) => segment ? [segment.p1, segment.p2] : []).flat(1);
+        // console.log('count', segments.length, count, points.length);
+
         points.sort(this.endPointCompare.bind(mover));
 
         var openSegments = [];
@@ -94,7 +114,7 @@ class Shadow {
                     var index = openSegments.indexOf(point.line)
                     if (index > -1) openSegments.splice(index, 1);
                 }
-                if (openSegment !== openSegments[0]) {
+                if (openSegment && openSegment !== openSegments[0]) {
                     if (pass === 1) {
                         var line = openSegment.getVisibleLine(mover, beginAngle, point.getProp(mover, "cTheta"));
                         output.push(line);

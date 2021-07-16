@@ -1,6 +1,10 @@
-import { OrthogonalVector, PolarVector } from "./vector.js";
+import { Visualizer } from "../system/visualizer.js";
+import { Color } from "./color.js";
+import { angleIsBetween, OrthogonalVector, PolarVector, Vector } from "./vector.js";
 
 class Line {
+    static limit = 1e-12;
+
     constructor(p1, p2) {
         this.p1 = p1.toOrthogonal().copy();
         this.p2 = p2.toOrthogonal().copy();
@@ -20,6 +24,12 @@ class Line {
         }
     }
 
+    same(other) {
+        var l1 = this.p1.minus(other.p1).r2 + this.p2.minus(other.p2).r2;
+        var l2 = this.p1.minus(other.p2).r2 + this.p2.minus(other.p1).r2;
+        return Math.min(l1, l2) ** 0.5 < Line.limit
+    }
+
     intesectWith(other) {
         const s = ((other.p2.x - other.p1.x) * (this.p1.y - other.p1.y) - (other.p2.y - other.p1.y) * (this.p1.x - other.p1.x)) /
             ((other.p2.y - other.p1.y) * (this.p2.x - this.p1.x) - (other.p2.x - other.p1.x) * (this.p2.y - this.p1.y));
@@ -27,11 +37,11 @@ class Line {
         return new OrthogonalVector((1 - s) * this.p1.x + s * this.p2.x, (1 - s) * this.p1.y + s * this.p2.y);
     }
 
-    CWThan(point) {
+    CCWThan(point) {
         // segment exists righter than point
         var l = this.p2.minus(this.p1);
         var d = point.toOrthogonal().minus(this.p1);
-        return d.inner(l.normal()) > 0
+        return d.inner(l.normal()) < 0
     }
 }
 
@@ -64,8 +74,10 @@ export class VisibilitySegment extends Line {
         this.p2.setProp(mover, "cTheta", cTheta2);
 
         var dAngle = cTheta2 - cTheta1;
+        // - 2 * Math. PI < dAngle < 2 * Math.PI
         if (dAngle <= -Math.PI) { dAngle += 2 * Math.PI; }
         if (dAngle > Math.PI) { dAngle -= 2 * Math.PI; }
+        // - Math.PI < dAngle <= Math.PI
         this.p1.setProp(mover, "beginLine", dAngle > 0);
         this.p2.setProp(mover, "beginLine", dAngle <= 0);
     }
@@ -74,17 +86,36 @@ export class VisibilitySegment extends Line {
         if (this.obj === undefined) {
             var v1 = this.getProp(mover, "v1");
             var v2 = this.getProp(mover, "v2");
+            layer.ctx.save();
+            layer.ctx.strokeStyle = mover.color.HEX();
+            // layer.ctx.strokeStyle = Color.random().HEX();
             layer.ctx.beginPath();
             layer.ctx.moveTo(Math.floor(v1.x), Math.floor(v1.y));
             layer.ctx.lineTo(Math.floor(v2.x), Math.floor(v2.y));
             layer.ctx.closePath();
             layer.ctx.stroke();
+            layer.ctx.restore();
         } else {
+            // Visualizer.drawCircle(Visualizer.findLayer("static"), { "pos": this.getProp(mover, "v1"), "rad": 1, });
+            // Visualizer.drawCircle(Visualizer.findLayer("static"), { "pos": this.getProp(mover, "v2"), "rad": 1, });
+
+            var v1 = this.getProp(mover, "v1").toOrthogonal();
+            var l1 = v1.minus(mover.pos);
+            var l2 = v1.minus(this.obj.pos);
+            var p1 = l2.minus(new PolarVector((this.obj.rad**2-l2.r2)**0.5, l1.theta));
+
+            var v2 = this.getProp(mover, "v2").toOrthogonal();
+            var l1 = v2.minus(mover.pos);
+            var l2 = v2.minus(this.obj.pos);
+            var p2 = l2.minus(new PolarVector((this.obj.rad**2-l2.r2)**0.5, l1.theta));
+
+
             var pseudoObject = {
                 "pos": this.obj.pos,
                 "rad": this.obj.rad,
-                "startAngle": this.getProp(mover, "startAngle"),
-                "endAngle": this.getProp(mover, "endAngle"),
+                "CCWAngle": p1.theta,
+                "CWAngle": p2.theta,
+                "color": mover.color
             };
             visualizer.drawArc(layer, pseudoObject);
         }
@@ -96,11 +127,10 @@ export class VisibilitySegment extends Line {
         // center.add(new PolarVector(rad, angle2));
         var p1 = mover.pos.add(new PolarVector(1, angle1));
         var p2 = mover.pos.add(new PolarVector(1, angle2));
-        var l1 = new VisibilitySegment(mover.pos, p1);
-        var l2 = new VisibilitySegment(mover.pos, p2);
-        var l = new VisibilitySegment(this.p1, this.p2);
-        var v1 = l.intesectWith(l1);
-        var v2 = l.intesectWith(l2);
+        var l1 = new Line(mover.pos, p1);
+        var l2 = new Line(mover.pos, p2);
+        var v1 = this.intesectWith(l1);
+        var v2 = this.intesectWith(l2);
         v1.line = this;
         v2.line = this;
         this.setProp(mover, "v1", v1);
@@ -110,13 +140,13 @@ export class VisibilitySegment extends Line {
 }
 
 export function segmentInFrontOf(s1, s2, relativePoint) {
-    const A1 = s1.CWThan(s2.p1.interpolate(s2.p2, 0.01));
-    const A2 = s1.CWThan(s2.p2.interpolate(s2.p1, 0.01));
-    const A3 = s1.CWThan(relativePoint);
+    const A1 = s1.CCWThan(s2.p1.interpolate(s2.p2, 0.01));
+    const A2 = s1.CCWThan(s2.p2.interpolate(s2.p1, 0.01));
+    const A3 = s1.CCWThan(relativePoint);
 
-    const B1 = s2.CWThan(s1.p1.interpolate(s1.p2, 0.01));
-    const B2 = s2.CWThan(s1.p2.interpolate(s1.p1, 0.01));
-    const B3 = s2.CWThan(relativePoint);
+    const B1 = s2.CCWThan(s1.p1.interpolate(s1.p2, 0.01));
+    const B2 = s2.CCWThan(s1.p2.interpolate(s1.p1, 0.01));
+    const B3 = s2.CCWThan(relativePoint);
 
     if (B1 === B2 && B2 !== B3) return true;
     if (A1 === A2 && A2 === A3) return true;

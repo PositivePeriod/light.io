@@ -4,6 +4,7 @@ export const SHAPE = Object.freeze(new Map([
     ["Donut", { "property": ["innerR", "outerR"], "hierarchy": 3 }],
     ["Tri", { "property": ["width", "height", "dir"], "hierarchy": 4 }],
     ["Hex", { "property": ["rad"], "hierarchy": 5 }],
+    ["innerRect", { "property": ["width", "height"], "hierarchy": 6 }]
 
 ]));
 

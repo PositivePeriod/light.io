@@ -10,7 +10,7 @@ export class Collision {
             var functionName = notReversed ? obj1.shape + obj2.shape : obj2.shape + obj1.shape;
 
             var isRoughCollided = this.roughCollide(obj1, obj2);
-            if (!isRoughCollided) {return false}
+            if (!isRoughCollided) { return false }
             if (functionName === "RectRect") { return isRoughCollided }
 
             return notReversed ? this[functionName](obj1, obj2) : this[functionName](obj2, obj1);
@@ -19,7 +19,8 @@ export class Collision {
         }
     }
 
-    static roughCollide(obj1, obj2) {        return this.RectRect(obj1, obj2)    }
+    static roughCollide(obj1, obj2) { return this.RectRect(obj1, obj2) }
+
 
     static RectRect(rect1, rect2) {
         var pos = rect1.pos.minus(rect2.pos);

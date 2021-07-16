@@ -3,7 +3,7 @@ var mapData = { "width": 10, "height": 10, "map": null };
 mapData.map = Array(mapData.width).fill(null).map(() => Array(mapData.height).fill("W"));
 for (var i = 1; i < mapData.width - 1; i++) {
     for (var j = 1; j < mapData.height - 1; j++) {
-        mapData.map[i][j] = Math.random() < 0.1 ? "W" : "B";
+        mapData.map[i][j] = Math.random() > 0.2 ? "B" : Math.random() > 0.1 ? "W" : "C";
     }
 }
 mapData.map[1][1] = "M1";

@@ -81,4 +81,11 @@ export class GameObject {
     isCollidedWith(other) {
         return Collision.isCollided(this, other);
     }
+
+    represent() {
+        return {
+            "type": this.type[-1],
+            "pos": this.pos.represent()
+        }
+    }
 }
