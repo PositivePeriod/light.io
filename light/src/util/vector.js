@@ -1,10 +1,15 @@
 export class Vector {
-    static rLimit = 1e-12;
+    static rLimit = 1e-6;
+    static thetaLimit = 1e-6;
 
     constructor() {}
 
     inner(other) {
         return this.x * other.x + this.y * other.y;
+    }
+
+    innerAngle(other) {
+        return Math.acos(this.inner(other) / this.r / other.r)
     }
 
     scalarProjectTo(other) {
@@ -17,9 +22,9 @@ export class Vector {
 
     normal(CCW = true) {
         if (CCW) {
-            return new OrthogonalVector(this.y, -this.x)
-        } else {
             return new OrthogonalVector(-this.y, this.x)
+        } else {
+            return new OrthogonalVector(this.y, -this.x)
         }
     }
 
@@ -31,22 +36,22 @@ export class Vector {
         }
     }
 
-    same(other) {
-        return this.minus(other).r < Vector.rLimit
-    }
-
     interpolate(other, t) {
         // this : other = t : 1-t
         return new OrthogonalVector(this.x * (1 - t) + other.x * t, this.y * (1 - t) + other.y * t)
     }
 
+    same(other) { return this.minus(other).r < Vector.rLimit }
+
+    parallel(other) { return Math.abs(this.x * other.y - this.y * other.x) < Vector.thetaLimit }
+
 }
 
 export class PolarVector extends Vector {
-    constructor(r, theta) {
+    constructor(r=0, theta=0) {
         super();
-        this.r = r || 0;
-        this.theta = theta || 0;
+        this.r = r;
+        this.theta = theta;
         this.checkRange();
         this.checkZero();
     }
@@ -76,9 +81,7 @@ export class PolarVector extends Vector {
     }
 
     checkZero() {
-        if (this.r < PolarVector.rLimit) {
-            this.r = 0
-        }
+        if (this.r < PolarVector.rLimit) { this.r = 0 }
     }
 
     toOrthogonal() {
@@ -117,10 +120,10 @@ export class PolarVector extends Vector {
 }
 
 export class OrthogonalVector extends Vector {
-    constructor(x, y) {
+    constructor(x=0, y=0) {
         super();
-        this.x = x || 0;
-        this.y = y || 0;
+        this.x = x;
+        this.y = y;
         this.checkZero();
     }
 
@@ -190,6 +193,8 @@ export class OrthogonalVector extends Vector {
     }
 }
 
-export function angleIsBetween(CCW, angle, CW) {
-    return (CCW < angle && angle < CW) || (angle < CW && CW < CCW) || (CW < CCW && CCW < angle)
+export class Angle {
+    static isBetween(CCW, angle, CW) {
+        return (CCW < angle && angle < CW) || (angle < CW && CW < CCW) || (CW < CCW && CCW < angle)
+    }
 }

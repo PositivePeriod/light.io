@@ -3,6 +3,8 @@ import { Timer } from "../util/timer.js";
 
 // https://developer.mozilla.org/ko/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
 
+function floor(x) { return x }
+
 class Visualizer {
     constructor() {
         this.timer = new Timer();
@@ -34,7 +36,7 @@ class Visualizer {
     }
 
     addFunc(name, func, arg) {
-        this.layersFunc.get(name).push({ "func": func, "arg": arg || undefined });
+        this.layersFunc.get(name).push({ "func": func, "arg": arg || [] });
     }
 
     addLayer(name, option) {
@@ -74,7 +76,7 @@ class Visualizer {
     initDraw() {
         this.resetLayer("master", this.master);
         ["visibleArea", "static", "visibleEdge", "panel", "mover", "time"].forEach(name => {
-        // ["visibleArea", "visibleEdge", "panel", "mover", "time"].forEach(name => {
+            // ["visibleArea", "visibleEdge", "panel", "mover", "time"].forEach(name => {
             var layer = this.findLayer(name);
             var funcs = this.layersFunc.get(name);
             this.resetLayer(name, layer);
@@ -137,14 +139,15 @@ class Visualizer {
     }
 
     drawCircle(layer, obj, stroke = false) {
-        var x = Math.floor(obj.pos.x);
-        var y = Math.floor(obj.pos.y);
-        var r = Math.floor(obj.rad);
+        var x = floor(obj.pos.x);
+        var y = floor(obj.pos.y);
+        var r = floor(obj.rad);
         var color = obj.color || Color.Black;
 
         layer.ctx.save();
-        layer.ctx.fillStyle = color.HEX();
-        layer.ctx.strokeStyle = color.HEX();
+        // layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.fillStyle = '#00880070';
+        layer.ctx.strokeStyle = color.RGBA();
 
         layer.ctx.beginPath();
         layer.ctx.arc(x, y, r, 0, 2 * Math.PI);
@@ -153,16 +156,16 @@ class Visualizer {
     }
 
     drawArc(layer, obj, stroke = true, CCW = true) {
-        var x = Math.floor(obj.pos.x);
-        var y = Math.floor(obj.pos.y);
-        var r = Math.floor(obj.rad);
+        var x = floor(obj.pos.x);
+        var y = floor(obj.pos.y);
+        var r = floor(obj.rad);
         var CCWAngle = obj.CCWAngle;
         var CWAngle = obj.CWAngle;
         var color = obj.color || Color.White;
-        
+
         layer.ctx.save();
-        layer.ctx.fillStyle = color.HEX();
-        layer.ctx.strokeStyle = color.HEX();
+        layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.strokeStyle = color.RGBA();
 
         layer.ctx.beginPath();
         layer.ctx.arc(x, y, r, CCWAngle, CWAngle, CCW);
@@ -172,15 +175,15 @@ class Visualizer {
 
     drawDonut(layer, obj, stroke = false) {
         // https://en.wikipedia.org/wiki/Nonzero-rule
-        var x = Math.floor(obj.pos.x);
-        var y = Math.floor(obj.pos.y);
-        var innerR = Math.floor(obj.innerR);
-        var outerR = Math.floor(obj.outerR);
+        var x = floor(obj.pos.x);
+        var y = floor(obj.pos.y);
+        var innerR = floor(obj.innerR);
+        var outerR = floor(obj.outerR);
         var color = obj.color || Color.Black;
 
         layer.ctx.save();
-        layer.ctx.fillStyle = color.HEX();
-        layer.ctx.strokeStyle = color.HEX();
+        layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.strokeStyle = color.RGBA();
 
         if (stroke) {
             layer.ctx.beginPath();
@@ -199,16 +202,16 @@ class Visualizer {
     }
 
     drawRect(layer, obj, stroke = false, center = true) {
-        var x = Math.floor(obj.pos.x);
-        var y = Math.floor(obj.pos.y);
-        var w = Math.floor(obj.width);
-        var h = Math.floor(obj.height);
+        var x = floor(obj.pos.x);
+        var y = floor(obj.pos.y);
+        var w = floor(obj.width);
+        var h = floor(obj.height);
         var color = obj.color || Color.Black;
 
         layer.ctx.save();
-        layer.ctx.alpha = 0.2;
-        layer.ctx.fillStyle = color.HEX();
-        layer.ctx.strokeStyle = color.HEX();
+        // layer.ctx.alpha = 0.2;
+        layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.strokeStyle = color.RGBA();
 
         var drawX = center ? x - w / 2 : x
         var drawY = center ? y - h / 2 : y
@@ -218,16 +221,16 @@ class Visualizer {
     }
 
     drawTri(layer, obj, stroke = false, centerMass = false) {
-        var x = Math.floor(obj.pos.x);
-        var y = Math.floor(obj.pos.y);
-        var w = Math.floor(obj.width);
-        var h = Math.floor(obj.height);
+        var x = floor(obj.pos.x);
+        var y = floor(obj.pos.y);
+        var w = floor(obj.width);
+        var h = floor(obj.height);
         var dir = obj.dir;
         var color = obj.color || Color.Black;
 
         layer.ctx.save();
-        layer.ctx.fillStyle = color.HEX();
-        layer.ctx.strokeStyle = color.HEX();
+        layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.strokeStyle = color.RGBA();
 
         var rightVertex = [x - dir[0] * w / (centerMass ? 3 : 2), y - dir[1] * h / (centerMass ? 3 : 2)];
         layer.ctx.beginPath();
@@ -240,59 +243,74 @@ class Visualizer {
 
     drawPolygon(layer, points, color = Color.Black, stroke = false) {
         layer.ctx.save();
-        layer.ctx.fillStyle = color.HEX();
-        layer.ctx.strokeStyle = color.HEX();
+        layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.strokeStyle = color.RGBA();
 
         layer.ctx.beginPath();
-        layer.ctx.moveTo(Math.floor(points[0].x), Math.floor(points[0].y));
-        points.forEach(p => { layer.ctx.lineTo(Math.floor(p.x), Math.floor(p.y)); });
+        layer.ctx.moveTo(floor(points[0].x), floor(points[0].y));
+        points.forEach(p => { layer.ctx.lineTo(floor(p.x), floor(p.y)); });
         layer.ctx.closePath();
         layer.ctx.stroke();
         if (!stroke) { layer.ctx.fill(); }
         layer.ctx.restore();
     }
 
-    drawVisibleArea(layer, mover) {
-
+    drawvisibleArea(layer, mover) {
         var polygon = mover.visibleArea;
-        if (polygon === undefined || polygon.length === 0) { return }
+        if (polygon.n === 0) { return }
 
         let gradient = layer.ctx.createRadialGradient(mover.pos.x, mover.pos.y, mover.rad, mover.pos.x, mover.pos.y, mover.visibleRange);
         var hsl = mover.color.hsl;
         gradient.addColorStop(0, `hsla(${hsl[0]}, ${hsl[1]*100}%, 40%, 1)`); // start
         gradient.addColorStop(1, `hsla(${hsl[0]}, ${hsl[1]*100}%, 0%, 0)`); // end
 
-
         layer.ctx.save();
         layer.ctx.globalCompositeOperation = "screen";
         layer.ctx.fillStyle = gradient;
         layer.ctx.beginPath();
-        layer.ctx.moveTo(Math.floor(polygon[0][0].x), Math.floor(polygon[0][0].y));
-        polygon.forEach(line => {
-            layer
-            layer.ctx.moveTo(Math.floor(line[0].x), Math.floor(line[0].y));
-            layer.ctx.lineTo(Math.floor(line[1].x), Math.floor(line[1].y));
-        })
-        polygon.forEach(line => {
-            layer.ctx.lineTo(Math.floor(line[0].x), Math.floor(line[0].y));
-            layer.ctx.lineTo(Math.floor(line[1].x), Math.floor(line[1].y));
-        })
+        polygon.vertices.forEach(v => { layer.ctx.lineTo(floor(v.x), floor(v.y)); })
         layer.ctx.closePath();
         layer.ctx.fill();
         layer.ctx.restore();
     }
 
     drawVisibleEdge(layer, mover) {
-        var polygon = mover.visibleArea;
-        if (polygon === undefined || polygon.length === 0) { return }
-
         layer.ctx.save();
         layer.ctx.globalCompositeOperation = "screen";
-        layer.ctx.strokeStyle = mover.color.HEX();
+        layer.ctx.strokeStyle = mover.color.RGBA();
 
-        polygon.forEach(line => {
-            line[0].line.draw(layer, mover, this);
-        })
+        mover.visibleEdges.forEach(line => { line.draw(layer, mover, this); })
+        layer.ctx.restore();
+    }
+
+    drawText(layer, obj, text, stroke = false) {
+        var x = floor(obj.pos.x);
+        var y = floor(obj.pos.y);
+        var color = obj.color || Color.random();
+
+        layer.ctx.save();
+        layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.strokeStyle = color.RGBA();
+
+        var func = stroke ? "strokeText" : "fillText";
+        layer.ctx[func](text, x, y);
+        layer.ctx.restore();
+    }
+
+    drawLine(layer, obj, color, lineWidth) {
+        // var color = obj.color || Color.random();
+        var lineWidth = lineWidth || 2;
+
+        layer.ctx.save();
+        // layer.ctx.strokeStyle = color.RGBA();
+        layer.ctx.strokeStyle = color;
+
+
+        layer.ctx.beginPath();
+        layer.ctx.moveTo(floor(obj.p1.x), floor(obj.p1.y));
+        layer.ctx.lineTo(floor(obj.p2.x), floor(obj.p2.y));
+        layer.ctx.closePath();
+        layer.ctx.stroke();
         layer.ctx.restore();
     }
 };

@@ -1,47 +1,71 @@
-import { Visualizer } from "../system/visualizer.js";
-import { Color } from "./color.js";
-import { angleIsBetween, OrthogonalVector, PolarVector, Vector } from "./vector.js";
+import { OrthogonalVector, PolarVector } from "./vector.js";
 
-class Line {
-    static limit = 1e-12;
-
-    constructor(p1, p2) {
+export class Line {
+    constructor(p1, p2, infinite=true) {
         this.p1 = p1.toOrthogonal().copy();
         this.p2 = p2.toOrthogonal().copy();
+        this.center = new OrthogonalVector((this.p1.x + this.p2.x) / 2, (this.p1.y + this.p2.y) / 2);
+        this.infinite = infinite;
 
         this.p1.line = this;
         this.p2.line = this;
+
+        this.vector = this.p2.minus(this.p1);
     }
 
-    distanceToPoint(point, segment = false) {
+    represent() {
+        return { "p1": this.p1.represent(), "p2": this.p2.represent() }
+    }
+
+    toInfinite() { this.infinite = true; return this }
+    toFinite() { this.infinite = false; return this }
+
+    perpendicularToPoint(point) {
         var p = point.toOrthogonal();
-        var l = this.p1.minus(this.p2);
-        var d = this.p2.minus(p);
-        if (segment) {
-            return 0 <= d.scalarProjectTo(l) < l.r ? d.scalarProjectTo(l.normal()) : Math.min(d.r, this.p2.minus(p).r)
-        } else {
-            return d.scalarProjectTo(l.normal())
+        var d = p.minus(this.p1);
+        var perpendicular = d.vectorProjectTo(this.vector).add(this.p1);
+        return perpendicular
+    }
+
+    distanceToPoint(point) {
+        var p = point.toOrthogonal();
+        var d = p.minus(this.p1);
+        var d1 = d.scalarProjectTo(this.vector);
+        var d2 = d.scalarProjectTo(this.vector.normal());
+        if (this.infinite) { return d2 } else { return (d1 < 0 || this.vector.r < d1) ? Math.min(d.r, p.minus(this.p2).r) : d2 }
+    }
+
+    intersectWith(other, infinite = false) {
+        // https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
+        if (this.vector.parallel(other.vector)) {
+            var v = this.p1.minus(other.p1);
+            if (this.vector.parallel(v)) {
+                // common line
+                var existInfinite = infinite || this.infinite || other.infinite;
+                var projection = v.scalarProjectTo(this.vector);
+                if (existInfinite || -other.vector.r <= projection || projection < this.vector.r) { console.error('Infinite intersection'); return 'infinite' }
+            }
+            return null
         }
+        var p1 = this.p1;
+        var p2 = this.p2;
+        var p3 = other.p1;
+        var p4 = other.p2;
+        const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
+        const u = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
+        if (!(infinite || this.infinite) && !(0 <= t && t <= 1)) { return null }
+        if (!(infinite || other.infinite) && !(0 <= u && u <= 1)) { return null }
+        var p = p1.interpolate(p2, t);
+        return p
     }
 
     same(other) {
-        var l1 = this.p1.minus(other.p1).r2 + this.p2.minus(other.p2).r2;
-        var l2 = this.p1.minus(other.p2).r2 + this.p2.minus(other.p1).r2;
-        return Math.min(l1, l2) ** 0.5 < Line.limit
+        return (this.p1.same(other.p1) && this.p2.same(other.p2)) || (this.p1.same(other.p2) && this.p2.same(other.p1))
     }
 
-    intesectWith(other) {
-        const s = ((other.p2.x - other.p1.x) * (this.p1.y - other.p1.y) - (other.p2.y - other.p1.y) * (this.p1.x - other.p1.x)) /
-            ((other.p2.y - other.p1.y) * (this.p2.x - this.p1.x) - (other.p2.x - other.p1.x) * (this.p2.y - this.p1.y));
-
-        return new OrthogonalVector((1 - s) * this.p1.x + s * this.p2.x, (1 - s) * this.p1.y + s * this.p2.y);
-    }
-
-    CCWThan(point) {
-        // segment exists righter than point
-        var l = this.p2.minus(this.p1);
-        var d = point.toOrthogonal().minus(this.p1);
-        return d.inner(l.normal()) < 0
+    isCCWThan(point) {
+        // segment exists lefter than point
+        return this.p2.minus(point).inner(this.vector.normal()) < 0
     }
 }
 
@@ -82,16 +106,16 @@ export class VisibilitySegment extends Line {
         this.p2.setProp(mover, "beginLine", dAngle <= 0);
     }
 
-    draw(layer, mover, visualizer) {
+    draw(layer, mover, visualizer, color) {
         if (this.obj === undefined) {
             var v1 = this.getProp(mover, "v1");
             var v2 = this.getProp(mover, "v2");
             layer.ctx.save();
-            layer.ctx.strokeStyle = mover.color.HEX();
-            // layer.ctx.strokeStyle = Color.random().HEX();
+            layer.ctx.strokeStyle = color || mover.color.HEX();
+            layer.ctx.lineWidth = 2;
             layer.ctx.beginPath();
-            layer.ctx.moveTo(Math.floor(v1.x), Math.floor(v1.y));
-            layer.ctx.lineTo(Math.floor(v2.x), Math.floor(v2.y));
+            layer.ctx.moveTo(v1.x, v1.y);
+            layer.ctx.lineTo(v2.x, v2.y);
             layer.ctx.closePath();
             layer.ctx.stroke();
             layer.ctx.restore();
@@ -102,12 +126,12 @@ export class VisibilitySegment extends Line {
             var v1 = this.getProp(mover, "v1").toOrthogonal();
             var l1 = v1.minus(mover.pos);
             var l2 = v1.minus(this.obj.pos);
-            var p1 = l2.minus(new PolarVector((this.obj.rad**2-l2.r2)**0.5, l1.theta));
+            var p1 = l2.minus(new PolarVector((this.obj.rad ** 2 - l2.r2) ** 0.5, l1.theta));
 
             var v2 = this.getProp(mover, "v2").toOrthogonal();
             var l1 = v2.minus(mover.pos);
             var l2 = v2.minus(this.obj.pos);
-            var p2 = l2.minus(new PolarVector((this.obj.rad**2-l2.r2)**0.5, l1.theta));
+            var p2 = l2.minus(new PolarVector((this.obj.rad ** 2 - l2.r2) ** 0.5, l1.theta));
 
 
             var pseudoObject = {
@@ -121,77 +145,36 @@ export class VisibilitySegment extends Line {
         }
     }
 
-    getVisibleLine(mover, angle1, angle2) {
-        // var rad = 1e6; // Should be Infinity
-        // center.add(new PolarVector(rad, angle1));
-        // center.add(new PolarVector(rad, angle2));
+    setVisibleRange(mover, angle1, angle2) {
         var p1 = mover.pos.add(new PolarVector(1, angle1));
         var p2 = mover.pos.add(new PolarVector(1, angle2));
         var l1 = new Line(mover.pos, p1);
         var l2 = new Line(mover.pos, p2);
-        var v1 = this.intesectWith(l1);
-        var v2 = this.intesectWith(l2);
+        var v1 = this.intersectWith(l1, true);
+        var v2 = this.intersectWith(l2, true);
         v1.line = this;
         v2.line = this;
         this.setProp(mover, "v1", v1);
         this.setProp(mover, "v2", v2);
-        return [v1, v2]
     }
 }
 
 export function segmentInFrontOf(s1, s2, relativePoint) {
-    const A1 = s1.CCWThan(s2.p1.interpolate(s2.p2, 0.01));
-    const A2 = s1.CCWThan(s2.p2.interpolate(s2.p1, 0.01));
-    const A3 = s1.CCWThan(relativePoint);
+    // TODO hardcoding what about?
+    var limit = 1e-6;
+    const A1 = s1.isCCWThan(s2.p1.interpolate(s2.p2, limit));
+    const A2 = s1.isCCWThan(s2.p2.interpolate(s2.p1, limit));
+    const A3 = s1.isCCWThan(relativePoint);
 
-    const B1 = s2.CCWThan(s1.p1.interpolate(s1.p2, 0.01));
-    const B2 = s2.CCWThan(s1.p2.interpolate(s1.p1, 0.01));
-    const B3 = s2.CCWThan(relativePoint);
-
+    const B1 = s2.isCCWThan(s1.p1.interpolate(s1.p2, limit));
+    const B2 = s2.isCCWThan(s1.p2.interpolate(s1.p1, limit));
+    const B3 = s2.isCCWThan(relativePoint);
     if (B1 === B2 && B2 !== B3) return true;
     if (A1 === A2 && A2 === A3) return true;
     if (A1 === A2 && A2 !== A3) return false;
     if (B1 === B2 && B2 === B3) return false;
+
+    console.error('segmentInFrontof');
+
     return false;
 };
-
-export function pointIsInPoly(p, polygon) {
-    // https://stackoverflow.com/a/17490923/14251702
-    var isInside = false;
-    var minX = polygon[0].x,
-        maxX = polygon[0].x;
-    var minY = polygon[0].y,
-        maxY = polygon[0].y;
-    for (var n = 1; n < polygon.length; n++) {
-        var q = polygon[n];
-        minX = Math.min(q.x, minX);
-        maxX = Math.max(q.x, maxX);
-        minY = Math.min(q.y, minY);
-        maxY = Math.max(q.y, maxY);
-    }
-
-    if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) {
-        return false;
-    }
-    var i = 0,
-        j = polygon.length - 1;
-    for (i, j; i < polygon.length; j = i++) {
-        if ((polygon[i].y > p.y) != (polygon[j].y > p.y) &&
-            p.x < (polygon[j].x - polygon[i].x) * (p.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x) {
-            isInside = !isInside;
-        }
-    }
-    return isInside;
-}
-
-export function pointIsInPoly2(p, polygon) {
-    var i = 0;
-    var j = 0;
-    var isIncluded = false;
-    for (i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        if (((polygon[i].y > p.y) != (polygon[j].y > p.y)) &&
-            (p.x < (polygon[j].x - polygon[i].x) * (p.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x))
-            isIncluded = !isIncluded;
-    }
-    return isIncluded;
-}

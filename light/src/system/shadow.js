@@ -1,4 +1,7 @@
+import { Color } from "../util/color.js";
 import { segmentInFrontOf } from "../util/line.js";
+import { Polygon } from "../util/polygon.js";
+import { Visualizer } from "./visualizer.js";
 
 class Shadow {
     constructor() {
@@ -51,6 +54,8 @@ class Shadow {
         return this.groups
     }
 
+    static specCounter = 0;
+
     endPointCompare(p1, p2) { // endPointCompare
         var cTheta1 = p1.getProp(this, "cTheta");
         var cTheta2 = p2.getProp(this, "cTheta");
@@ -60,44 +65,31 @@ class Shadow {
         if (cTheta1 < cTheta2) return -1;
         if (!beginLine1 && beginLine2) return 1;
         if (beginLine1 && !beginLine2) return -1;
-        return 0;
+        // console.log('comp', p1.line.represent(), p2.line.represent());
+        return p1.line.center.minus(this.pos).r < p2.line.center.minus(this.pos).r ? -1 : 1;
     }
 
-    calcVisibleArea(mover) {
+    calcVisiblility(mover) {
         var segments = [];
+        var points = [];
         this.getWallGroups(mover).forEach(group => {
             group.forEach(segment => {
                 segment.setMover(mover);
-                segments.push(segment);
+                // checking overlapped edges
+                if (segment !== null && segments.every(s => { return !s.same(segment) })) { segments.push(segment); }
             })
         })
-
-        var count = 0;
-        for (let i = 0; i < segments.length-1; i += 1) {
-            var flag = false;
-            for (let j = i+1; j < segments.length; j += 1) {
-                var si = segments[i];
-                var sj = segments[j];
-                if (si === null || sj === null) { continue }
-                if (si.same(sj)) {
-                    // console.log('flag', i, j);
-                    flag = true;
-                    segments[j] = null;
-                }
-            }
-            if (flag) { count++; }
-        }
-        var points = segments.map((segment) => segment ? [segment.p1, segment.p2] : []).flat(1);
-        // console.log('count', segments.length, count, points.length);
-
+        // console.log(mover.pos);
+        var points = segments.map(segment => [segment.p1, segment.p2]).flat(1);
         points.sort(this.endPointCompare.bind(mover));
-
+        // console.log(segments[8].represent(), segments[9].represent());
         var openSegments = [];
-        var output = [];
+        var vertices = [];
+        var edges = [];
         var beginAngle = 0;
 
-        for (let pass = 0; pass < 2; pass += 1) {
-            for (let i = 0; i < points.length; i += 1) {
+        for (let pass = 0; pass < 2; pass++) {
+            for (let i = 0; i < points.length; i++) {
                 var point = points[i];
                 var openSegment = openSegments[0];
                 if (point.getProp(mover, "beginLine")) {
@@ -115,15 +107,35 @@ class Shadow {
                     if (index > -1) openSegments.splice(index, 1);
                 }
                 if (openSegment && openSegment !== openSegments[0]) {
-                    if (pass === 1) {
-                        var line = openSegment.getVisibleLine(mover, beginAngle, point.getProp(mover, "cTheta"));
-                        output.push(line);
+                    if (pass === 1 && Math.abs(beginAngle - point.getProp(mover, "cTheta")) > 1e-6) {
+                        openSegment.setVisibleRange(mover, beginAngle, point.getProp(mover, "cTheta"));
+                        vertices.push(openSegment.getProp(mover, "v1"), openSegment.getProp(mover, "v2"));
+                        edges.push(openSegment);
                     }
                     beginAngle = point.getProp(mover, "cTheta");
                 }
             }
         }
-        return output
+
+        // edges.forEach((segment, index) => {
+        //     Visualizer.addFunc("time", function(layer, line) { this.drawLine(layer, line, '#00FFFF'); }, [segment]);
+        //     Visualizer.addFunc("time", function(layer) { this.drawText(layer, { "pos": segment.center }, 'Q' + index.toString()); }, []);
+        // })
+
+        var polygonVertices = [edges[0].getProp(mover, "v1")];
+        for (let i = 0; i < edges.length; i++) {
+            var v1 = edges[i].getProp(mover, "v1");
+            var v2 = edges[i].getProp(mover, "v2");
+            // TODO might be error
+            if (!polygonVertices[polygonVertices.length - 1].same(v1)) { polygonVertices.push(v1); }
+            if (!polygonVertices[polygonVertices.length - 1].same(v2)) { polygonVertices.push(v2); }
+        }
+        if (polygonVertices[0].same(polygonVertices[polygonVertices.length - 1])) { polygonVertices.pop(); }
+        return { "visibleEdges": edges, "visibleArea": new Polygon(polygonVertices) }
+    }
+
+    isVisible(mover, line) {
+        // return mover.visibleArea.includePoint(line.p1)
     }
 }
 

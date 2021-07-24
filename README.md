@@ -11,3 +11,5 @@ Personal web game development based on dynamic.io
 - 2. 다양한 object : Mirror, Portal, 지나갈 수 있지만 빛만 막는 것
 
 VisibilityEdge issue
+
+Panel 전체로 하기...

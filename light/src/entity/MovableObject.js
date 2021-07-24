@@ -4,21 +4,22 @@ import { OrthogonalVector, PolarVector } from "../util/vector.js";
 import { Color } from "../util/color.js";
 import { Visualizer } from "../system/visualizer.js";
 import { KeyboardManager, MouseManager } from "../util/inputManager.js";
+import { Polygon } from "../util/polygon.js";
 
 export class MovableObject extends GameObject {
-    constructor(x, y, id) {
+    constructor(x, y, id, keyboard, mouse) {
         super(x, y);
-        this.keyboard = new KeyboardManager();
-        this.mouse = new MouseManager();
+        this.keyboard = keyboard || new KeyboardManager();
+        this.mouse = mouse || new MouseManager();
         this.id = id;
         this.type.push("MovableObject");
         this.color = Color.Gray;
 
         // Kinematics
         this.mass = 1;
-        this.friction = 0.01;
-        this.movingForceMag = 1000;
-        
+        this.friction = 0.001;
+        this.movingForceMag = 500;
+
         // External Input
         this.movingKey = {
             "KeyW": { x: 0, y: -1 },
@@ -27,14 +28,25 @@ export class MovableObject extends GameObject {
             "KeyD": { x: 1, y: 0 }
         }
 
-        this.visibleRange = 300;
-        this.visibleArea = [];
+        this.visibleRange = 3000;
+        this.visibleArea = new Polygon();
+        this.visibleEdges = [];
         this.activate();
+    }
+
+    toggle() {
+        this.keyboard.toggle();
+        this.mouse.toggle();
     }
 
     activate() {
         this.keyboard.activate();
         this.mouse.activate();
+    }
+
+    deactivate() {
+        this.keyboard.deactivate();
+        this.mouse.deactivate();
     }
 
     move() {
@@ -49,7 +61,7 @@ export class MovableObject extends GameObject {
         }
     }
 
-    update(dt) {
+    update(dt, turn) {
         this.move();
         super.update(dt);
 
@@ -61,13 +73,12 @@ export class MovableObject extends GameObject {
             }
         });
         collidedObj.forEach(obj => { obj.collideAfter(this); });
-
         this.velocity.multiplyBy(Math.pow(this.friction, dt));
     }
 
     draw() {
         Visualizer.addFunc("mover", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
-        Visualizer.addFunc("visibleArea", function(layer, obj) { this.drawVisibleArea(layer, obj); }, [this]);
+        Visualizer.addFunc("visibleArea", function(layer, obj) { this.drawvisibleArea(layer, obj); }, [this]);
         Visualizer.addFunc("visibleEdge", function(layer, obj) { this.drawVisibleEdge(layer, obj); }, [this]);
     }
 }

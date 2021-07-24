@@ -70,7 +70,7 @@ export class Color {
     }
 
     static HUEtoRGB(m1, m2, h) {
-        if (h < 0) { h += 1; }
+        if (h < 0) { h ++; }
         if (h > 1) { h -= 1; }
         if (h < 1 / 6) return m1 + (m2 - m1) * h * 6;
         if (h < 1 / 2) return m2;
@@ -94,19 +94,21 @@ export class Color {
                 this.hsl = color.slice(0, 3);
                 this.rgb = Color.HSLtoRGB(...this.hsl);
                 this.hex = Color.RGBtoHEX(...this.rgb);
+                this.alpha = color[3] || 1;
                 break;
             case "rgb":
                 this.rgb = color.slice(0, 3);
                 this.hsl = Color.RGBtoHSL(...this.rgb);
                 this.hex = Color.RGBtoHEX(...this.rgb);
+                this.alpha = color[3] || 1;
                 break;
             case "hex":
-                this.hex = color[0];
+                this.hex = color[0].slice(0, 7);
                 this.rgb = Color.HEXtoRGB(this.hex);
                 this.hsl = Color.RGBtoHSL(...this.rgb);
+                this.alpha = color[1] || 1;
                 break;
         }
-        this.alpha = color[3] || 1;
     }
 
     setAlpha(alpha) {
@@ -133,6 +135,11 @@ export class Color {
 
     HEX() {
         return this.hex
+    }
+
+    HEXA(a) {
+        var alpha = a || this.alpha;
+        return this.hex + Math.round(alpha*255).toString(16).toUpperCase();
     }
 
     represent() {

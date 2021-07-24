@@ -13,18 +13,22 @@ export class RigidBackground extends MapObject {
 
     collide(other, dt) {
         var dPos = other.velocity.multiply(dt);
+        var counter = 0;
         while (this.isCollidedWith(other)) {
+            if (counter++ > 1e4) {
+                console.error("Infinite collision detection; check init collision between bodies");
+                return;
+            }
             other.pos.minusBy(dPos);
         }
         for (let i = 0; i < this.accuracy; i++) {
             dPos.multiplyBy(1 / 2);
             var counter = 0;
             while (!this.isCollidedWith(other)) {
-                if (counter > 1e6) {
+                if (counter++ > 1e4) {
                     console.error("Infinite collision detection; check init collision between bodies");
                     return;
                 }
-                counter += 1;
                 other.pos.addBy(dPos);
             }
             other.pos.minusBy(dPos);

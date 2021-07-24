@@ -1,10 +1,18 @@
 // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code - key name
 // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key - key event
 
+// TODO change into new Map()
+
 export class KeyboardManager {
-    constructor() {
+    constructor(log=false) {
+        this.log = log;
+
         this.keyStatus = {};
         this.keyCallback = {};
+        this.active = false;
+
+        window.addEventListener("keydown", this.handler.bind(this));
+        window.addEventListener("keyup", this.handler.bind(this));
     }
 
     isPressed(keyCode) {
@@ -12,12 +20,13 @@ export class KeyboardManager {
     }
 
     handler(e) {
-        // console.log(e.type, e.code);
+        if (!this.active) { return; }
+        if (this.log) { console.log(e.type, e.code); }
         switch (e.type) {
             case "keydown":
                 this.keyStatus[e.code] = true;
                 if (e.code in this.keyCallback) {
-                    // console.log("listen", e.code)
+                    if (this.log) { console.log("listen", e.code) }
                     this.keyCallback[e.code]();
                 }
                 break;
@@ -33,25 +42,31 @@ export class KeyboardManager {
         this.keyCallback[keyCode] = callback;
     }
 
-    activate() {
-        window.addEventListener("keydown", this.handler.bind(this));
-        window.addEventListener("keyup", this.handler.bind(this));
-    }
+    toggle() { if (this.active) { this.deactivate(); } else { this.activate(); } }
+
+    activate() { this.active = true; }
 
     deactivate() {
-        window.removeEventListener("keydown", this.handler.bind(this));
-        window.removeEventListener("keyup", this.handler.bind(this));
+        this.keyStatus = {};
+        this.active = false;
     }
 }
 
 export class MouseManager {
-    constructor() {
+    constructor(log=false) {
+        this.log = log;
+
         this.mouseCallback = {};
         this.x = null;
         this.y = null;
         this.downX = null;
         this.downY = null;
         this.isPressed = false;
+        this.active = false;
+
+        // window.addEventListener("mousemove", this.handler.bind(this));
+        window.addEventListener("mousedown", this.handler.bind(this));
+        window.addEventListener("mouseup", this.handler.bind(this));
     }
 
     getPoint() {
@@ -63,9 +78,10 @@ export class MouseManager {
     }
 
     handler(e) {
+        if (!this.active) { return; }
         const x = e.offsetX;
         const y = e.offsetY;
-        // console.log(e.type, x, y);
+        if (this.log) { console.log(e.type, x, y); }
         switch (e.type) {
             case "mousemove":
                 this.x = x;
@@ -98,15 +114,16 @@ export class MouseManager {
         this.mouseCallback[eventType] = callback;
     }
 
-    activate() {
-        // window.addEventListener("mousemove", this.handler.bind(this));
-        window.addEventListener("mousedown", this.handler.bind(this));
-        window.addEventListener("mouseup", this.handler.bind(this));
-    }
+    toggle() { if (this.active) { this.deactivate(); } else { this.activate(); } }
+
+    activate() { this.active = true; }
 
     deactivate() {
-        // window.addEventListener("mousemove", this.handler.bind(this));
-        window.removeEventListener("mousedown", this.handler.bind(this));
-        window.removeEventListener("mouseup", this.handler.bind(this));
+        this.x = null;
+        this.y = null;
+        this.downX = null;
+        this.downY = null;
+        this.isPressed = false;
+        this.active = false;
     }
 }
