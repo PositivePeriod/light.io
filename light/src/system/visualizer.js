@@ -41,8 +41,8 @@ class Visualizer {
 
     addLayer(name, option) {
         var canvas = document.createElement("canvas");
-        // canvas.setAttribute("id", name);
-        // document.body.appendChild(canvas);
+        canvas.setAttribute("id", name);
+        document.body.appendChild(canvas);
         var ctx = canvas.getContext("2d");
         this.layers.set(name, { "canvas": canvas, "ctx": ctx });
         this.layersInfo.set(name, option ? option : { "drawReset": true, "funcReset": false });
@@ -138,30 +138,30 @@ class Visualizer {
         }
     }
 
-    drawCircle(layer, obj, stroke = false) {
+    drawCircle(layer, obj, option = {}) {
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
         var r = floor(obj.rad);
-        var color = obj.color || Color.Black;
+        var color = option.color || obj.color || Color.Black;
 
         layer.ctx.save();
-        // layer.ctx.fillStyle = color.RGBA();
-        layer.ctx.fillStyle = '#00880070';
+        layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
 
         layer.ctx.beginPath();
         layer.ctx.arc(x, y, r, 0, 2 * Math.PI);
-        if (stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
+        if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
 
-    drawArc(layer, obj, stroke = true, CCW = true) {
+    drawArc(layer, obj, option = {}) {
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
         var r = floor(obj.rad);
         var CCWAngle = obj.CCWAngle;
         var CWAngle = obj.CWAngle;
-        var color = obj.color || Color.White;
+        var color = option.color || obj.color || Color.White;
+        var CCW = option.CCW? option.CCW : true
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
@@ -169,23 +169,23 @@ class Visualizer {
 
         layer.ctx.beginPath();
         layer.ctx.arc(x, y, r, CCWAngle, CWAngle, CCW);
-        if (stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
+        if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
 
-    drawDonut(layer, obj, stroke = false) {
+    drawDonut(layer, obj, option = {}) {
         // https://en.wikipedia.org/wiki/Nonzero-rule
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
         var innerR = floor(obj.innerR);
         var outerR = floor(obj.outerR);
-        var color = obj.color || Color.Black;
+        var color = option.color || obj.color || Color.random();
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
 
-        if (stroke) {
+        if (option.stroke) {
             layer.ctx.beginPath();
             layer.ctx.arc(x, y, outerR, 0, 2 * Math.PI);
             layer.ctx.stroke();
@@ -201,47 +201,47 @@ class Visualizer {
         layer.ctx.restore();
     }
 
-    drawRect(layer, obj, stroke = false, center = true) {
+    drawRect(layer, obj, option = {}) {
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
         var w = floor(obj.width);
         var h = floor(obj.height);
-        var color = obj.color || Color.Black;
-
+        var color = option.color || obj.color || Color.Gray;
         layer.ctx.save();
-        // layer.ctx.alpha = 0.2;
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
 
-        var drawX = center ? x - w / 2 : x
-        var drawY = center ? y - h / 2 : y
-        var func = stroke ? "strokeRect" : "fillRect";
+        var drawX = option.center || (option.center === undefined) ? x - w / 2 : x
+        var drawY = option.center || (option.center === undefined) ? y - h / 2 : y
+        var func = option.stroke ? "strokeRect" : "fillRect";
         layer.ctx[func](drawX, drawY, w, h);
         layer.ctx.restore();
     }
 
-    drawTri(layer, obj, stroke = false, centerMass = false) {
+    drawTri(layer, obj, option = {}) {
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
         var w = floor(obj.width);
         var h = floor(obj.height);
         var dir = obj.dir;
-        var color = obj.color || Color.Black;
+        var color = option.color || obj.color || Color.random();
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
 
-        var rightVertex = [x - dir[0] * w / (centerMass ? 3 : 2), y - dir[1] * h / (centerMass ? 3 : 2)];
+        var rightVertex = [x - dir[0] * w / (option.centerMass ? 3 : 2), y - dir[1] * h / (option.centerMass ? 3 : 2)];
         layer.ctx.beginPath();
         layer.ctx.moveTo(rightVertex[0], rightVertex[1]);
         layer.ctx.lineTo(rightVertex[0] + dir[0] * w, rightVertex[1]);
         layer.ctx.lineTo(rightVertex[0], rightVertex[1] + dir[1] * h);
-        if (stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
+        if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
 
-    drawPolygon(layer, points, color = Color.Black, stroke = false) {
+    drawPolygon(layer, points, option = {}) {
+        var color = option.color || Color.random();
+
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
@@ -251,7 +251,7 @@ class Visualizer {
         points.forEach(p => { layer.ctx.lineTo(floor(p.x), floor(p.y)); });
         layer.ctx.closePath();
         layer.ctx.stroke();
-        if (!stroke) { layer.ctx.fill(); }
+        if (!option.stroke) { layer.ctx.fill(); }
         layer.ctx.restore();
     }
 
@@ -283,28 +283,27 @@ class Visualizer {
         layer.ctx.restore();
     }
 
-    drawText(layer, obj, text, stroke = false) {
-        var x = floor(obj.pos.x);
-        var y = floor(obj.pos.y);
-        var color = obj.color || Color.random();
+    drawText(layer, pos, text, option = {}) {
+        var x = floor(pos.x);
+        var y = floor(pos.y);
+        var color = option.color || obj.color || Color.random();
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
 
-        var func = stroke ? "strokeText" : "fillText";
+        var func = option.stroke ? "strokeText" : "fillText";
         layer.ctx[func](text, x, y);
         layer.ctx.restore();
     }
 
-    drawLine(layer, obj, color, lineWidth) {
-        // var color = obj.color || Color.random();
-        var lineWidth = lineWidth || 2;
+    drawLine(layer, obj, option = {}) {
+        var color = option.color || obj.color || Color.random();
+        var lineWidth = option.lineWidth || 2;
 
         layer.ctx.save();
-        // layer.ctx.strokeStyle = color.RGBA();
-        layer.ctx.strokeStyle = color;
-
+        layer.ctx.strokeStyle = color.RGBA();
+        layer.ctx.lineWidth = lineWidth;
 
         layer.ctx.beginPath();
         layer.ctx.moveTo(floor(obj.p1.x), floor(obj.p1.y));

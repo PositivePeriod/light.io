@@ -1,9 +1,10 @@
 export const mapData = Object.freeze({
     "width": 7,
-    "height": 3,
+    "height": 4,
     "map": [
         ["W", "W", "W", "W", "W", "W", "W"],
         ["W", "M1", "B", "P1", "B", "P2", "W"],
+        ["W", "W", "W", "B", "W", "W", "W"],
         ["W", "W", "W", "W", "W", "W", "W"],
     ],
     "mover": {

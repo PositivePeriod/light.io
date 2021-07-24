@@ -22,17 +22,13 @@ class Panel extends MapObject {
         var p3 = new OrthogonalVector(this.pos.x + this.width / 2, this.pos.y + this.height / 2);
         var p4 = new OrthogonalVector(this.pos.x - this.width / 2, this.pos.y + this.height / 2);
         this.polygon = new Polygon([p1, p2, p3, p4]);
-       console.log(this.polygon.edges);
     }
 
     update() {
         this.observers = [];
         ObjectSystem.find("MovableObject").forEach(mover => {
             var visible = mover.visibleArea.intersectWith(this.polygon) || mover.visibleArea.includePoint(this.pos);
-            console.log(mover.visibleArea.intersectWith(this.polygon), mover.visibleArea.includePoint(this.pos));
-            if (visible && this.pos.minus(mover.pos).r < mover.visibleRange) {
-                this.observers.push(mover);
-            }
+            if (visible && this.pos.minus(mover.pos).r < mover.visibleRange) { this.observers.push(mover); }
         });
     }
 }

@@ -1,6 +1,7 @@
 import { Color } from "../util/color.js";
 import { segmentInFrontOf } from "../util/line.js";
 import { Polygon } from "../util/polygon.js";
+import { OrthogonalVector } from "../util/vector.js";
 import { Visualizer } from "./visualizer.js";
 
 class Shadow {
@@ -40,7 +41,7 @@ class Shadow {
         group.length = 0;
     }
 
-    getWallGroups(mover) {
+    getWalls(mover) {
         ["static", "semi-static", "dynamic"].forEach(name => {
             var group = this.findGroup(name);
             var info = this.groupsInfo.get(name);
@@ -51,91 +52,109 @@ class Shadow {
             }
             if (info.funcReset) { this.groupsFunc.set(name, []); }
         });
-        return this.groups
-    }
-
-    static specCounter = 0;
-
-    endPointCompare(p1, p2) { // endPointCompare
-        var cTheta1 = p1.getProp(this, "cTheta");
-        var cTheta2 = p2.getProp(this, "cTheta");
-        var beginLine1 = p1.getProp(this, "beginLine");
-        var beginLine2 = p2.getProp(this, "beginLine");
-        if (cTheta1 > cTheta2) return 1;
-        if (cTheta1 < cTheta2) return -1;
-        if (!beginLine1 && beginLine2) return 1;
-        if (beginLine1 && !beginLine2) return -1;
-        // console.log('comp', p1.line.represent(), p2.line.represent());
-        return p1.line.center.minus(this.pos).r < p2.line.center.minus(this.pos).r ? -1 : 1;
-    }
-
-    calcVisiblility(mover) {
         var segments = [];
-        var points = [];
-        this.getWallGroups(mover).forEach(group => {
+        this.groups.forEach(group => {
             group.forEach(segment => {
                 segment.setMover(mover);
                 // checking overlapped edges
                 if (segment !== null && segments.every(s => { return !s.same(segment) })) { segments.push(segment); }
             })
         })
-        // console.log(mover.pos);
-        var points = segments.map(segment => [segment.p1, segment.p2]).flat(1);
-        points.sort(this.endPointCompare.bind(mover));
-        // console.log(segments[8].represent(), segments[9].represent());
-        var openSegments = [];
-        var vertices = [];
-        var edges = [];
-        var beginAngle = 0;
-
-        for (let pass = 0; pass < 2; pass++) {
-            for (let i = 0; i < points.length; i++) {
-                var point = points[i];
-                var openSegment = openSegments[0];
-                if (point.getProp(mover, "beginLine")) {
-                    var segment = openSegments.find(segment => { return !segment || !segmentInFrontOf(point.line, segment, mover.pos) });
-                    // push
-                    if (!segment) {
-                        openSegments.push(point.line);
-                    } else {
-                        var index = openSegments.indexOf(segment);
-                        openSegments.splice(index, 0, point.line);
-                    }
-                } else {
-                    // remove
-                    var index = openSegments.indexOf(point.line)
-                    if (index > -1) openSegments.splice(index, 1);
-                }
-                if (openSegment && openSegment !== openSegments[0]) {
-                    if (pass === 1 && Math.abs(beginAngle - point.getProp(mover, "cTheta")) > 1e-6) {
-                        openSegment.setVisibleRange(mover, beginAngle, point.getProp(mover, "cTheta"));
-                        vertices.push(openSegment.getProp(mover, "v1"), openSegment.getProp(mover, "v2"));
-                        edges.push(openSegment);
-                    }
-                    beginAngle = point.getProp(mover, "cTheta");
-                }
-            }
-        }
-
-        // edges.forEach((segment, index) => {
-        //     Visualizer.addFunc("time", function(layer, line) { this.drawLine(layer, line, '#00FFFF'); }, [segment]);
-        //     Visualizer.addFunc("time", function(layer) { this.drawText(layer, { "pos": segment.center }, 'Q' + index.toString()); }, []);
-        // })
-
-        var polygonVertices = [edges[0].getProp(mover, "v1")];
-        for (let i = 0; i < edges.length; i++) {
-            var v1 = edges[i].getProp(mover, "v1");
-            var v2 = edges[i].getProp(mover, "v2");
-            // TODO might be error
-            if (!polygonVertices[polygonVertices.length - 1].same(v1)) { polygonVertices.push(v1); }
-            if (!polygonVertices[polygonVertices.length - 1].same(v2)) { polygonVertices.push(v2); }
-        }
-        if (polygonVertices[0].same(polygonVertices[polygonVertices.length - 1])) { polygonVertices.pop(); }
-        return { "visibleEdges": edges, "visibleArea": new Polygon(polygonVertices) }
+        return segments
     }
 
-    isVisible(mover, line) {
-        // return mover.visibleArea.includePoint(line.p1)
+    getIntersection(ray, segment) {
+
+        // RAY in parametric: Point + Delta*T1
+        var r_px = ray.a.x;
+        var r_py = ray.a.y;
+        var r_dx = ray.b.x - ray.a.x;
+        var r_dy = ray.b.y - ray.a.y;
+
+        // SEGMENT in parametric: Point + Delta*T2
+        var s_px = segment.p1.x;
+        var s_py = segment.p1.y;
+        var s_dx = segment.p2.x - segment.p1.x;
+        var s_dy = segment.p2.y - segment.p1.y;
+
+        // Are they parallel? If so, no intersect
+        var r_mag = Math.sqrt(r_dx * r_dx + r_dy * r_dy);
+        var s_mag = Math.sqrt(s_dx * s_dx + s_dy * s_dy);
+        if (Math.abs(r_dx / r_mag - s_dx / s_mag) < 1e-6 && Math.abs(r_dy / r_mag - s_dy / s_mag) < 1e-6) {
+            // Unit vectors are the same.
+            return null;
+        }
+
+        // SOLVE FOR T1 & T2
+        // r_px+r_dx*T1 = s_px+s_dx*T2 && r_py+r_dy*T1 = s_py+s_dy*T2
+        // ==> T1 = (s_px+s_dx*T2-r_px)/r_dx = (s_py+s_dy*T2-r_py)/r_dy
+        // ==> s_px*r_dy + s_dx*T2*r_dy - r_px*r_dy = s_py*r_dx + s_dy*T2*r_dx - r_py*r_dx
+        // ==> T2 = (r_dx*(s_py-r_py) + r_dy*(r_px-s_px))/(s_dx*r_dy - s_dy*r_dx)
+        var T2 = (r_dx * (s_py - r_py) + r_dy * (r_px - s_px)) / (s_dx * r_dy - s_dy * r_dx);
+        var T1 = (s_px + s_dx * T2 - r_px) / r_dx;
+
+        // Must be within parametic whatevers for RAY/SEGMENT
+        if (T1 < 0) return null;
+        if (T2 < 0 || T2 > 1) return null;
+
+        // Return the POINT OF INTERSECTION
+        return {
+            x: r_px + r_dx * T1,
+            y: r_py + r_dy * T1,
+            param: T1
+        };
+
+    }
+
+    calcVisiblility(mover) {
+        var angleLimit = 0.00001;
+        var segments = this.getWalls(mover);
+        var points = [];
+        segments.forEach(segment => {
+            if (points.every(p => { return !p.same(segment.p1) })) { points.push(segment.p1); }
+            if (points.every(p => { return !p.same(segment.p2) })) { points.push(segment.p2); }
+        })
+        var angles = [];
+        for (var j = 0; j < points.length; j++) {
+            var point = points[j];
+            var angle = Math.atan2(point.y - mover.pos.y, point.x - mover.pos.x);
+            point.angle = angle;
+            if (angles.every(a => { return Math.abs(a - angle) > 1e-12 })) {
+                angles.push(angle - angleLimit, angle, angle + angleLimit);
+            }
+        }
+        // RAYS IN ALL DIRECTIONS
+        var intersects = [];
+        for (var i = 0; i < angles.length; i++) {
+            var angle = angles[i];
+            // Calculate dx & dy from angle
+            var dx = Math.cos(angle);
+            var dy = Math.sin(angle);
+            // Ray from center of screen to mouse
+            var ray = {
+                a: { x: mover.pos.x, y: mover.pos.y },
+                b: { x: mover.pos.x + dx, y: mover.pos.y + dy }
+            };
+            // Find CLOSEST intersection
+            var closestIntersect = null;
+            for (var j = 0; j < segments.length; j++) {
+                var intersect = this.getIntersection(ray, segments[j]);
+                if (!intersect) { continue; }
+                if (!closestIntersect || intersect.param < closestIntersect.param) {
+                    closestIntersect = intersect;
+                }
+            }
+            // Intersect angle
+            if (!closestIntersect) { continue; }
+            closestIntersect.angle = angle;
+            // Add to list of intersects
+            intersects.push(closestIntersect);
+        }
+        // Sort intersects by angle
+        intersects.sort(function(a, b) { return a.angle - b.angle; });
+        var polygonVertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));
+
+        return { "visibleEdges": [], "visibleArea": new Polygon(polygonVertices) }
     }
 }
 

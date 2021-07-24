@@ -1,5 +1,6 @@
 import { Visualizer } from "../system/visualizer.js";
 import { Line } from "./line.js";
+import { Color } from "./color.js";
 
 export class Polygon {
     constructor(vertices) {
@@ -14,7 +15,6 @@ export class Polygon {
             }
             this.edges.push(new Line(this.vertices[this.n - 1], this.vertices[0], false));
         }
-        this.edges.forEach(edge => { Visualizer.addFunc("time", function(layer, line) { this.drawLine(layer, line, '#00FFFF'); }, [edge]); });
     }
 
     includePoint(point) {

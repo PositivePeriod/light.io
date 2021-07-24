@@ -225,7 +225,7 @@ export class Game {
         });
         Visualizer.draw();
 
-        // Game.checkFPS();
+        Game.checkFPS();
     }
 
     static checkFPS() {

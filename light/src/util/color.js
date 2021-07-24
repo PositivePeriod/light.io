@@ -9,8 +9,12 @@ export class Color {
     static Black = new Color("hex", "#000000");
 
     static Red = new Color("hex", "#F44336");
-    static Blue = new Color("hex", "#2196F3");
     static Green = new Color("hex", "#4CAF50");
+    static Blue = new Color("hex", "#2196F3");
+
+    static Yellow = new Color("hex", "#FFFF00");
+    static Magenta = new Color("hex", "#FF00FF");
+    static Cyan = new Color("hex", "#00FFFF");
 
     static random() {
         var color = '#' + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0');

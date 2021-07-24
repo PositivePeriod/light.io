@@ -28,7 +28,7 @@ export class MovableObject extends GameObject {
             "KeyD": { x: 1, y: 0 }
         }
 
-        this.visibleRange = 3000;
+        this.visibleRange = 300;
         this.visibleArea = new Polygon();
         this.visibleEdges = [];
         this.activate();
