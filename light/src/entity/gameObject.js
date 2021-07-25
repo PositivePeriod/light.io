@@ -15,10 +15,10 @@ export class GameObject {
         this.pos = new OrthogonalVector(x, y);
 
         // Visualize
-        this.shape = null; //
+        this.shape = null;
         this.color = Color.Black;
-        this.passable = true; //
-        this.movable = true; //
+        this.passable = true;
+        this.movable = true;
         this.opaque = false;
     }
 
@@ -42,18 +42,18 @@ export class GameObject {
         SHAPE.get(shape).property.forEach(prop => {
             if (option[prop] === undefined) { console.error("Not enough property in option; ", prop, option[prop], option); return; } else { this[prop] = option[prop] }
         })
-        switch (shape) { // for roughCollide
+        switch (shape) { // for roughCollide // Can be 2 but want to be sure
             case "Rect":
             case "Tri":
                 break;
             case "Circle":
             case "Hex":
-                this.width = 3 * this.rad;
-                this.height = 3 * this.rad;
+                this.width = 2.5 * this.rad;
+                this.height = 2.5 * this.rad;
                 break;
             case "Donut":
-                this.width = 3 * this.outerR;
-                this.height = 3 * this.outerR;
+                this.width = 2.5 * this.outerR;
+                this.height = 2.5 * this.outerR;
                 break;
         }
         this.shape = shape;
@@ -75,7 +75,11 @@ export class GameObject {
     }
 
     draw() {
-        Visualizer.addFunc("static", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
+        this.drawFuncUid = Visualizer.addFunc("static", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
+    }
+
+    removeDraw() {
+        Visualizer.removeFunc("static", this.drawFuncUid);
     }
 
     isCollidedWith(other) {

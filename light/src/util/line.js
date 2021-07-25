@@ -1,9 +1,11 @@
+import { Visualizer } from "../system/visualizer.js";
+import { Color } from "./color.js";
 import { OrthogonalVector, PolarVector } from "./vector.js";
 
 export class Line {
-    constructor(p1, p2, infinite=true) {
-        this.p1 = p1.toOrthogonal().copy();
-        this.p2 = p2.toOrthogonal().copy();
+    constructor(p1, p2, infinite = true) {
+        this.p1 = p1.toOrthogonal(true);
+        this.p2 = p2.toOrthogonal(true);
         this.center = new OrthogonalVector((this.p1.x + this.p2.x) / 2, (this.p1.y + this.p2.y) / 2);
         this.infinite = infinite;
 
@@ -38,25 +40,34 @@ export class Line {
     intersectWith(other, infinite = false) {
         // https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
         if (this.vector.parallel(other.vector)) {
-            var v = this.p1.minus(other.p1);
+            var v = other.p1.minus(this.p1);
             if (this.vector.parallel(v)) {
                 // common line
                 var existInfinite = infinite || this.infinite || other.infinite;
+                if (existInfinite) {
+                    return true
+                } // Infinite many intersection
                 var projection = v.scalarProjectTo(this.vector);
-                if (existInfinite || -other.vector.r <= projection || projection < this.vector.r) { console.error('Infinite intersection'); return 'infinite' }
+                var isSameDir = other.vector.scalarProjectTo(this.vector) > 0;
+                if (isSameDir) {
+                    return -other.vector.r < projection && projection < this.vector.r ? true : null
+                } else {
+                    return 0 < projection && projection < this.vector.r + other.vector.r ? true : null
+                }
             }
             return null
+        } else {
+            var p1 = this.p1;
+            var p2 = this.p2;
+            var p3 = other.p1;
+            var p4 = other.p2;
+            const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
+            const u = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
+            if (!(infinite || this.infinite) && !(0 <= t && t <= 1)) { return null }
+            if (!(infinite || other.infinite) && !(0 <= u && u <= 1)) { return null }
+            var p = p1.interpolate(p2, t);
+            return p
         }
-        var p1 = this.p1;
-        var p2 = this.p2;
-        var p3 = other.p1;
-        var p4 = other.p2;
-        const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
-        const u = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
-        if (!(infinite || this.infinite) && !(0 <= t && t <= 1)) { return null }
-        if (!(infinite || other.infinite) && !(0 <= u && u <= 1)) { return null }
-        var p = p1.interpolate(p2, t);
-        return p
     }
 
     same(other) {
@@ -71,7 +82,7 @@ export class Line {
 
 export class VisibilitySegment extends Line {
     constructor(p1, p2) {
-        super(p1, p2);
+        super(p1, p2, false);
         this.prop = new Map();
         this.p1.prop = new Map();
         this.p2.prop = new Map();
@@ -174,7 +185,7 @@ export function segmentInFrontOf(s1, s2, relativePoint) {
     if (A1 === A2 && A2 !== A3) return false;
     if (B1 === B2 && B2 === B3) return false;
 
-    console.error('segmentInFrontof');
+    console.error("segmentInFrontof");
 
     return false;
 };

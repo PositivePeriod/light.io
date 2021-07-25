@@ -4,7 +4,7 @@ export const mapData = Object.freeze({
     "map": [
         ["W", "W", "W", "W"],
         ["W", "M", "W", "W"],
-        ["W", "B", "W", "W"],
+        ["W", "B", "U", "W"],
         ["W", "W", "W", "W"],
     ]
 });

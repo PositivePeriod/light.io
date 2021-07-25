@@ -19,7 +19,7 @@ class ObjectSystem {
         obj.type.forEach(type => {
             var group = this.objects.get(type);
             var idx = group.indexOf(obj);
-            if (idx > -1) { group.splice(idx, 1); }
+            if (idx > -1) { group.splice(idx, 1); } else { console.warn("Fail to remove obj;", obj); }
         })
     }
 };

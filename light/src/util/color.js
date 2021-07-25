@@ -17,7 +17,7 @@ export class Color {
     static Cyan = new Color("hex", "#00FFFF");
 
     static random() {
-        var color = '#' + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0');
+        var color = "#" + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, "0");
         return new Color("hex", color)
     }
 

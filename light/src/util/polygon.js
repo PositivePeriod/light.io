@@ -47,13 +47,23 @@ export class Polygon {
     }
 
     intersectWith(other) {
-        var flag = false;
-        for (let i = 0; i < this.edges.length; i++) {
-            for (let j = 0; j < other.edges.length; j++) {
-                if (this.edges[i].intersectWith(other.edges[j])) { flag = true; }
-            }
-        }
-        return flag
-        // return this.edges.some(e1 => other.edges.some(e2 => e1.intersectWith(e2) !== null));
+        // var flag = false;
+        // for (let i = 0; i < this.edges.length; i++) {
+        //     for (let j = 0; j < other.edges.length; j++) {
+        //         if (this.edges[i].intersectWith(other.edges[j])) {
+        //             flag = true;
+        //             var a = i;
+        //             var b = j;
+        //             break;
+        //         }
+        //     }
+        //     if (flag) { break; }
+        // }
+        // if (flag) {
+        //     Visualizer.addFunc("time", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [this.edges[a]]);
+        //     Visualizer.addFunc("time", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [other.edges[b]]);
+        // }
+        // return flag
+        return this.edges.some(e1 => other.edges.some(e2 => e1.intersectWith(e2, false) !== null));
     }
 }

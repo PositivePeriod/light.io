@@ -14,3 +14,8 @@ VisibilityEdge issue -> Visibility Algorithm 아예 바꿈 / 정리는 되지 �
 대신 edge 감지 불가... stable해져서 임의의 점 check는 쉽게 가능해짐
 
 Panel 전체로 하기...
+
+서로 만나는 선들 있으면 사전에 처리하기
+
+polygon 최적화 -> edge 얻어내기 / 직선 뿐만 아니라 호도 얻어내기
+ 

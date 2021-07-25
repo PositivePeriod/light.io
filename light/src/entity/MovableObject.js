@@ -18,7 +18,7 @@ export class MovableObject extends GameObject {
         // Kinematics
         this.mass = 1;
         this.friction = 0.001;
-        this.movingForceMag = 500;
+        this.movingForceMag = 1000;
 
         // External Input
         this.movingKey = {
@@ -28,7 +28,7 @@ export class MovableObject extends GameObject {
             "KeyD": { x: 1, y: 0 }
         }
 
-        this.visibleRange = 300;
+        this.visibleRange = 500;
         this.visibleArea = new Polygon();
         this.visibleEdges = [];
         this.activate();

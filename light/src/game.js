@@ -6,8 +6,8 @@ import { Angle, OrthogonalVector, PolarVector } from "./util/vector.js";
 import { VisibilitySegment } from "./util/line.js";
 import { ObjectSystem } from "./system/objectSystem.js"
 
-import { mapData } from "./data/map1-3.js"
-import { NegativePanel, PositivePanel } from "./entity/mapObject/panel.js";
+import { mapData } from "./data/map1-5.js"
+import { NegativePanel, PositivePanel, UncertainPanel } from "./entity/mapObject/panel.js";
 import { Color } from "./util/color.js";
 import { Shadow } from "./system/shadow.js";
 
@@ -24,7 +24,7 @@ export class Game {
 
         this.initGameSize();
         this.initGameObjects();
-        this.initShadowNVisualizer();
+        // this.initShadowNVisualizer();
         Visualizer.initDraw();
 
         setInterval(this.update.bind(this), Math.round(1000 / Game.fps));
@@ -35,7 +35,7 @@ export class Game {
         var stageHeight = Visualizer.stageHeight;
         this.mapWidth = mapData.width;
         this.mapHeight = mapData.height;
-        this.gridSize = Math.min(stageWidth / this.mapWidth, stageHeight / this.mapHeight) * 0.7;
+        this.gridSize = Math.min(stageWidth / this.mapWidth, stageHeight / this.mapHeight) * 1;
         this.startX = (stageWidth - this.gridSize * this.mapWidth) / 2;
         this.startY = (stageHeight - this.gridSize * this.mapHeight) / 2;
         this.gridSize = Math.min(this.gridSize);
@@ -45,6 +45,7 @@ export class Game {
 
     initGameObjects() {
         this.moverColor = [Color.Red, Color.Blue, Color.Green];
+        this.panelType = { "P": PositivePanel, "N": NegativePanel, "U": UncertainPanel };
         this.moverCounter = 0;
         for (let x = 0; x < this.mapWidth; x++) {
             for (let y = 0; y < this.mapHeight; y++) {
@@ -65,8 +66,13 @@ export class Game {
                         break;
                     case "P": // PositivePanel
                     case "N": // NegativePanel
-                        obj = blockType === "P" ? new PositivePanel(posX, posY) : new NegativePanel(posX, posY);
+                        obj = new this.panelType[blockType](posX, posY);
                         obj.makeShape("Rect", { "width": this.gridSize * 0.2, "height": this.gridSize * 0.2 });
+                        break;
+                    case "U": // UncertainPanel
+                        obj = new this.panelType[blockType](posX, posY);
+                        var size = this.gridSize;
+                        obj.makeShape("Rect", { "width": size, "height": size });
                         break;
                     case "C": // Circle
                         obj = new RigidBackground(posX, posY);
@@ -82,50 +88,49 @@ export class Game {
                     default:
                         break;
                 }
-                if (obj) { ObjectSystem.add(obj); }
-            }
-        }
-    }
-
-    initShadowNVisualizer() {
-        ObjectSystem.find("GameObject").forEach(obj => {
-            if (obj.opaque) {
-                switch (obj.shape) {
-                    case "Rect":
-                        var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
-                        var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
-                        var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
-                        var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
-                        Shadow.addWalls("static", [new VisibilitySegment(p1, p3), new VisibilitySegment(p1, p2), new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)]);
-                        break;
-                    case "Circle":
-                        var func = (group, mover, obj) => {
-                            var dPos = mover.pos.minus(obj.pos);
-                            var angle = Math.acos(obj.rad / dPos.r);
-                            var p1 = obj.pos.add(new PolarVector(obj.rad, dPos.theta + angle));
-                            var p2 = obj.pos.add(new PolarVector(obj.rad, dPos.theta - angle));
-                            var line = new VisibilitySegment(p1, p2);
-                            var angle1 = dPos.theta + angle;
-                            var angle2 = dPos.theta - angle;
-                            if (Angle.isBetween(angle1, dPos.theta, angle2)) {
-                                line.setProp(mover, "CCW", angle1);
-                                line.setProp(mover, "CW", angle2);
-                            } else {
-                                line.setProp(mover, "CCW", angle2);
-                                line.setProp(mover, "CW", angle1);
-                            }
-                            line.obj = obj;
-                            group.push(line);
+                if (obj) {
+                    ObjectSystem.add(obj);
+                    if (obj.opaque) {
+                        switch (obj.shape) {
+                            case "Rect":
+                                var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
+                                var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
+                                var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
+                                var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
+                                Shadow.addWalls("static", [
+                                    new VisibilitySegment(p1, p3), new VisibilitySegment(p1, p2),
+                                    new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)
+                                ]);
+                                break;
+                            case "Circle":
+                                var func = function(group, mover, obj) {
+                                    var dPos = mover.pos.minus(obj.pos);
+                                    var angle = Math.acos(obj.rad / dPos.r);
+                                    var p1 = obj.pos.add(new PolarVector(obj.rad, dPos.theta + angle));
+                                    var p2 = obj.pos.add(new PolarVector(obj.rad, dPos.theta - angle));
+                                    var line = new VisibilitySegment(p1, p2);
+                                    var angle1 = dPos.theta + angle;
+                                    var angle2 = dPos.theta - angle;
+                                    if (Angle.isBetween(angle1, dPos.theta, angle2)) {
+                                        line.setProp(mover, "CCW", angle1);
+                                        line.setProp(mover, "CW", angle2);
+                                    } else {
+                                        line.setProp(mover, "CCW", angle2);
+                                        line.setProp(mover, "CW", angle1);
+                                    }
+                                    line.obj = obj;
+                                    this.addWalls("semi-static", [line]);
+                                }
+                                Shadow.addFunc("semi-static", func, [obj]);
+                                break;
+                            default:
+                                break;
                         }
-                        Shadow.addFunc("semi-static", func, [obj]);
-                        break;
-                    default:
-                        break;
+                    }
+                    obj.draw(); // TODO
                 }
             }
-            obj.draw();
-        });
-
+        }
     }
 
     async addGameObject() {
@@ -150,7 +155,8 @@ export class Game {
                 break;
             case "P": // PositivePanel
             case "N": // NegativePanel
-                obj = blockType === "P" ? new PositivePanel(posX, posY) : new NegativePanel(posX, posY);
+            case "U": // UncertainPanel
+                obj = new this.panelType[blockType](posX, posY);
                 obj.makeShape("Rect", { "width": this.gridSize * 0.2, "height": this.gridSize * 0.2 });
                 break;
             case "C": // Circle
@@ -177,8 +183,11 @@ export class Game {
                         var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
                         var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
                         var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
-                        Shadow.addWalls("static", [new VisibilitySegment(p1, p3),
-                            new VisibilitySegment(p1, p2), new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)
+                        Shadow.addWalls("static", [
+                            new VisibilitySegment(p1, p3),
+                            new VisibilitySegment(p1, p2),
+                            new VisibilitySegment(p3, p4),
+                            new VisibilitySegment(p2, p4)
                         ]);
                         break;
                     case "Circle":
@@ -236,6 +245,7 @@ export class Game {
             console.clear();
             console.log("MinFPS :", this.minFPS.toFixed(2));
             console.log("AverageFPS :", this.averageFPS.toFixed(2));
+            console.log("CurrentFPS :", fps.toFixed(2));
         }
     }
 

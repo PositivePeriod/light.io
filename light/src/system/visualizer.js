@@ -1,5 +1,6 @@
 import { Color } from "../util/color.js";
 import { Timer } from "../util/timer.js";
+import { UID } from "../util/uid.js";
 
 // https://developer.mozilla.org/ko/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
 
@@ -36,17 +37,27 @@ class Visualizer {
     }
 
     addFunc(name, func, arg) {
-        this.layersFunc.get(name).push({ "func": func, "arg": arg || [] });
+        var uid = UID.get();
+        this.layersFunc.get(name).set(uid, { "func": func, "arg": arg || [] });
+        if (!this.layersInfo.get(name).drawReset) { this.initDraw(); }
+        return uid
+    }
+
+    removeFunc(name, uid) {
+        if (!this.layersFunc.get(name).delete(uid)) {
+            console.warn("Fail to remove func;", uid);
+        }
+        this.initDraw();
     }
 
     addLayer(name, option) {
         var canvas = document.createElement("canvas");
-        canvas.setAttribute("id", name);
-        document.body.appendChild(canvas);
+        // canvas.setAttribute("id", name);
+        // document.body.appendChild(canvas);
         var ctx = canvas.getContext("2d");
         this.layers.set(name, { "canvas": canvas, "ctx": ctx });
         this.layersInfo.set(name, option ? option : { "drawReset": true, "funcReset": false });
-        this.layersFunc.set(name, []);
+        this.layersFunc.set(name, new Map());
     }
 
     findLayer(name) {
@@ -76,7 +87,6 @@ class Visualizer {
     initDraw() {
         this.resetLayer("master", this.master);
         ["visibleArea", "static", "visibleEdge", "panel", "mover", "time"].forEach(name => {
-            // ["visibleArea", "visibleEdge", "panel", "mover", "time"].forEach(name => {
             var layer = this.findLayer(name);
             var funcs = this.layersFunc.get(name);
             this.resetLayer(name, layer);
@@ -105,7 +115,7 @@ class Visualizer {
                         break;
                 }
             }
-            if (info.funcReset) { this.layersFunc.set(name, []); }
+            if (info.funcReset) { this.layersFunc.set(name, new Map()); }
             switch (name) {
                 case "visibleEdge":
                     this.master.ctx.save();
@@ -141,7 +151,7 @@ class Visualizer {
     drawCircle(layer, obj, option = {}) {
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
-        var r = floor(obj.rad);
+        var r = floor(obj.rad || 10);
         var color = option.color || obj.color || Color.Black;
 
         layer.ctx.save();
@@ -161,7 +171,7 @@ class Visualizer {
         var CCWAngle = obj.CCWAngle;
         var CWAngle = obj.CWAngle;
         var color = option.color || obj.color || Color.White;
-        var CCW = option.CCW? option.CCW : true
+        var CCW = option.CCW ? option.CCW : true
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
@@ -241,6 +251,7 @@ class Visualizer {
 
     drawPolygon(layer, points, option = {}) {
         var color = option.color || Color.random();
+        var stroke = option.stroke ? option.stroke : false;
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
@@ -251,7 +262,7 @@ class Visualizer {
         points.forEach(p => { layer.ctx.lineTo(floor(p.x), floor(p.y)); });
         layer.ctx.closePath();
         layer.ctx.stroke();
-        if (!option.stroke) { layer.ctx.fill(); }
+        if (stroke) { layer.ctx.fill(); }
         layer.ctx.restore();
     }
 
@@ -284,16 +295,21 @@ class Visualizer {
     }
 
     drawText(layer, pos, text, option = {}) {
+        var lineHeight = 10;
         var x = floor(pos.x);
         var y = floor(pos.y);
-        var color = option.color || obj.color || Color.random();
+        var color = option.color || Color.random();
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
 
         var func = option.stroke ? "strokeText" : "fillText";
-        layer.ctx[func](text, x, y);
+        if (typeof text === "string") {
+            layer.ctx[func](text, x, y);
+        } else if (text instanceof Array) {
+            text.forEach((line, index) => { layer.ctx[func](line, x, y + lineHeight * index); });
+        }
         layer.ctx.restore();
     }
 

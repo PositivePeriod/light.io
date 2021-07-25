@@ -1,6 +1,6 @@
 import { Color } from "../util/color.js";
-import { segmentInFrontOf } from "../util/line.js";
 import { Polygon } from "../util/polygon.js";
+import { UID } from "../util/uid.js";
 import { OrthogonalVector } from "../util/vector.js";
 import { Visualizer } from "./visualizer.js";
 
@@ -18,7 +18,21 @@ class Shadow {
     }
 
     addWalls(name, walls) {
-        this.findGroup(name).push(...walls);
+        var uids = [];
+        var group = this.findGroup(name);
+        walls.forEach(wall => {
+            var uid = UID.get();
+            group.set(uid, wall);
+            uids.push(uid);
+        });
+        return uids
+    }
+
+    removeWalls(name, uids) {
+        var group = this.findGroup(name);
+        uids.forEach(uid => {
+            if (!group.delete(uid)) { console.warn("Fail to remove wall;", uid); }
+        });
     }
 
     addFunc(name, func, arg) {
@@ -26,7 +40,7 @@ class Shadow {
     }
 
     addGroup(name, option) {
-        this.groups.set(name, []);
+        this.groups.set(name, new Map());
         this.groupsInfo.set(name, option ? option : { "wallReset": true, "funcReset": false });
         this.groupsFunc.set(name, []);
     }
@@ -38,7 +52,7 @@ class Shadow {
 
     resetGroup(name, group) {
         var group = group || this.findGroup(name);
-        group.length = 0;
+        group.clear();
     }
 
     getWalls(mover) {
@@ -64,19 +78,16 @@ class Shadow {
     }
 
     getIntersection(ray, segment) {
-
         // RAY in parametric: Point + Delta*T1
         var r_px = ray.a.x;
         var r_py = ray.a.y;
         var r_dx = ray.b.x - ray.a.x;
         var r_dy = ray.b.y - ray.a.y;
-
         // SEGMENT in parametric: Point + Delta*T2
         var s_px = segment.p1.x;
         var s_py = segment.p1.y;
         var s_dx = segment.p2.x - segment.p1.x;
         var s_dy = segment.p2.y - segment.p1.y;
-
         // Are they parallel? If so, no intersect
         var r_mag = Math.sqrt(r_dx * r_dx + r_dy * r_dy);
         var s_mag = Math.sqrt(s_dx * s_dx + s_dy * s_dy);
@@ -84,7 +95,6 @@ class Shadow {
             // Unit vectors are the same.
             return null;
         }
-
         // SOLVE FOR T1 & T2
         // r_px+r_dx*T1 = s_px+s_dx*T2 && r_py+r_dy*T1 = s_py+s_dy*T2
         // ==> T1 = (s_px+s_dx*T2-r_px)/r_dx = (s_py+s_dy*T2-r_py)/r_dy
@@ -92,22 +102,16 @@ class Shadow {
         // ==> T2 = (r_dx*(s_py-r_py) + r_dy*(r_px-s_px))/(s_dx*r_dy - s_dy*r_dx)
         var T2 = (r_dx * (s_py - r_py) + r_dy * (r_px - s_px)) / (s_dx * r_dy - s_dy * r_dx);
         var T1 = (s_px + s_dx * T2 - r_px) / r_dx;
-
         // Must be within parametic whatevers for RAY/SEGMENT
         if (T1 < 0) return null;
         if (T2 < 0 || T2 > 1) return null;
-
         // Return the POINT OF INTERSECTION
-        return {
-            x: r_px + r_dx * T1,
-            y: r_py + r_dy * T1,
-            param: T1
-        };
+        return { x: r_px + r_dx * T1, y: r_py + r_dy * T1, param: T1 };
 
     }
 
     calcVisiblility(mover) {
-        var angleLimit = 0.00001;
+        var angleLimit = 1e-6;
         var segments = this.getWalls(mover);
         var points = [];
         segments.forEach(segment => {
@@ -119,7 +123,7 @@ class Shadow {
             var point = points[j];
             var angle = Math.atan2(point.y - mover.pos.y, point.x - mover.pos.x);
             point.angle = angle;
-            if (angles.every(a => { return Math.abs(a - angle) > 1e-12 })) {
+            if (angles.every(a => { return Math.abs(a - angle) > 1e-6 })) {
                 angles.push(angle - angleLimit, angle, angle + angleLimit);
             }
         }
@@ -152,11 +156,45 @@ class Shadow {
         }
         // Sort intersects by angle
         intersects.sort(function(a, b) { return a.angle - b.angle; });
-        var polygonVertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));
+        var vertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));
+        vertices = this.optimizeVertices(vertices);
 
-        return { "visibleEdges": [], "visibleArea": new Polygon(polygonVertices) }
+        // Visualizer.addFunc("time", function(layer, points) { this.drawPolygon(layer, points, { "color": Color.Cyan }); }, [vertices]);
+        // vertices.forEach((v, i) => {
+        //     Visualizer.addFunc("time", function(layer) { this.drawCircle(layer, { "pos": v, "rad": 3 }, { "color": Color.Magenta }); }, []);
+        //     Visualizer.addFunc("time", function(layer) { this.drawText(layer, v.add(new OrthogonalVector(0, i % 3 * 5)), "V" + i.toString(), { "color": Color.Magenta }); }, []);
+        // });
+
+        return { "visibleEdges": [], "visibleArea": new Polygon(vertices) }
+    }
+
+    optimizeVertices(vertices) {
+        var newV = [vertices[0], vertices[1]];
+        for (let i = 2; i < vertices.length; i++) {
+            var v1 = newV[newV.length - 1].minus(newV[newV.length - 2]);
+            var v2 = vertices[i].minus(newV[newV.length - 1]);
+            if (v1.parallel(v2) || v1.r < 1e-6) { newV.pop(); }
+            newV.push(vertices[i]);
+        }
+        // Check parallelity of vertices[last]
+        var v1 = newV[newV.length - 1].minus(newV[newV.length - 2]);
+        var v2 = newV[0].minus(newV[newV.length - 1]);
+        if (v1.parallel(v2) || v1.r < 1e-6) { newV.pop(); }
+        // Check parallelity of vertices[0]
+        var v1 = newV[0].minus(newV[newV.length - 1]);
+        var v2 = newV[1].minus(newV[0]);
+        if (v1.parallel(v2) || v1.r < 1e-6) { newV.splice(0, 1); }
+        // Check again for being sure and some error
+        var i = 0;
+        while (i < newV.length) {
+            var v1 = newV[(i + 1) % newV.length].minus(newV[i]);
+            var v2 = newV[(i + 2) % newV.length].minus(newV[(i + 1) % newV.length]);
+            if (v1.parallel(v2)) { newV.splice((i + 1) % newV.length, 1); } else { i++; }
+        }
+        return newV
     }
 }
+
 
 var shadow = new Shadow();
 export { shadow as Shadow }

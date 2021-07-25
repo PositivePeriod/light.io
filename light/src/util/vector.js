@@ -1,6 +1,7 @@
 export class Vector {
     static rLimit = 1e-6;
     static thetaLimit = 1e-6;
+    static limit = 1e-4;
 
     constructor() {}
 
@@ -43,7 +44,7 @@ export class Vector {
 
     same(other) { return this.minus(other).r < Vector.rLimit }
 
-    parallel(other) { return Math.abs(this.x * other.y - this.y * other.x) < Vector.thetaLimit }
+    parallel(other) { return Math.abs((this.x * other.y - this.y * other.x)/this.r/other.r) < Vector.limit }
 
 }
 
