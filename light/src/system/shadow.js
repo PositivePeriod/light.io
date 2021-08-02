@@ -1,8 +1,6 @@
-import { Color } from "../util/color.js";
 import { Polygon } from "../util/polygon.js";
 import { UID } from "../util/uid.js";
 import { OrthogonalVector } from "../util/vector.js";
-import { Visualizer } from "./visualizer.js";
 
 class Shadow {
     constructor() {
@@ -13,8 +11,8 @@ class Shadow {
         // static
         this.addGroup("static", { "wallReset": false, "funcReset": false });
         // dynamic
-        this.addGroup("semi-static");
-        this.addGroup("dynamic", { "wallReset": true, "funcReset": true });
+        this.addGroup("dynamic");
+        this.addGroup("one-shot", { "wallReset": true, "funcReset": true });
     }
 
     addWalls(name, walls) {
@@ -56,7 +54,7 @@ class Shadow {
     }
 
     getWalls(mover) {
-        ["static", "semi-static", "dynamic"].forEach(name => {
+        ["static", "dynamic", "one-shot"].forEach(name => {
             var group = this.findGroup(name);
             var info = this.groupsInfo.get(name);
             var funcs = this.groupsFunc.get(name);
@@ -71,9 +69,46 @@ class Shadow {
             group.forEach(segment => {
                 segment.setMover(mover);
                 // checking overlapped edges
-                if (segment !== null && segments.every(s => { return !s.same(segment) })) { segments.push(segment); }
+                if (segment !== null && segments.every(s => !s.same(segment))) { segments.push(segment); }
             })
         })
+
+        // segments.forEach(l => { Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Cyan); }, [l]); })
+
+        // Checking intersecting edges
+        // var newSegments = [];
+        // var counter = 0;
+        // while (segments.length !== 0) {
+        //     if (counter++ > 1e3) {
+        //         console.error("Infinite checking intersecting edges");
+        //         return;
+        //     }
+        //     var segment = segments.pop();
+
+        //     var index = newSegments.findIndex(s => s.intersectWith(segment, false, true) !== null);
+        //     if (index === -1) {
+        //         newSegments.push(segment);
+        //     } else {
+        //         if (newSegments[index].vector.parallel(segment.vector)) {
+        //             var line = unionParallelLine(newSegments[index], segment);
+        //             newSegments.splice(index, 1);
+        //             segments.push(line);
+        //         } else {
+        //             var intersection = newSegments[index].intersectWith(segment);
+        //             var valid = [newSegments[index].p1, newSegments[index].p2, segment.p1, segment.p2].every(p => !p.same(intersection));
+
+        //             if (valid) {
+        //                 [newSegments[index].p1, newSegments[index].p2, segment.p1, segment.p2].forEach(point => {
+        //                     segments.push(new VisibilitySegment(point, intersection, false));
+        //                 });
+        //                 newSegments.splice(index, 1);
+        //             } else { newSegments.push(segment); }
+        //         }
+        //     }
+        // }
+        // newSegments = segments
+        // newSegments.forEach(l => { Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Cyan); }, [l]); })
+
         return segments
     }
 
@@ -156,19 +191,20 @@ class Shadow {
         }
         // Sort intersects by angle
         intersects.sort(function(a, b) { return a.angle - b.angle; });
-        var vertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));
+        var vertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));     
         vertices = this.optimizeVertices(vertices);
 
-        // Visualizer.addFunc("time", function(layer, points) { this.drawPolygon(layer, points, { "color": Color.Cyan }); }, [vertices]);
+        // Visualizer.addFunc("one-shot", function(layer, points) { this.drawPolygon(layer, points, { "color": Color.Cyan }); }, [vertices]);
         // vertices.forEach((v, i) => {
-        //     Visualizer.addFunc("time", function(layer) { this.drawCircle(layer, { "pos": v, "rad": 3 }, { "color": Color.Magenta }); }, []);
-        //     Visualizer.addFunc("time", function(layer) { this.drawText(layer, v.add(new OrthogonalVector(0, i % 3 * 5)), "V" + i.toString(), { "color": Color.Magenta }); }, []);
+        //     Visualizer.addFunc("one-shot", function(layer) { this.drawCircle(layer, { "pos": v, "rad": 3 }, { "color": Color.Magenta }); }, []);
+        //     Visualizer.addFunc("one-shot", function(layer) { this.drawText(layer, v.add(new OrthogonalVector(0, i % 3 * 5)), "V" + i.toString(), { "color": Color.Magenta }); }, []);
         // });
 
         return { "visibleEdges": [], "visibleArea": new Polygon(vertices) }
     }
 
     optimizeVertices(vertices) {
+        if (vertices.length <= 3) { return vertices }
         var newV = [vertices[0], vertices[1]];
         for (let i = 2; i < vertices.length; i++) {
             var v1 = newV[newV.length - 1].minus(newV[newV.length - 2]);
@@ -182,11 +218,16 @@ class Shadow {
         if (v1.parallel(v2) || v1.r < 1e-6) { newV.pop(); }
         // Check parallelity of vertices[0]
         var v1 = newV[0].minus(newV[newV.length - 1]);
-        var v2 = newV[1].minus(newV[0]);
+        var v2 = newV[1].minus(newV[0]); // Error for special case? not edfined newV[1]
         if (v1.parallel(v2) || v1.r < 1e-6) { newV.splice(0, 1); }
         // Check again for being sure and some error
         var i = 0;
+        var counter = 0;
         while (i < newV.length) {
+            if (counter++ > 1e4) {
+                console.error("Infinite optimizing vertices");
+                return;
+            }
             var v1 = newV[(i + 1) % newV.length].minus(newV[i]);
             var v2 = newV[(i + 2) % newV.length].minus(newV[(i + 1) % newV.length]);
             if (v1.parallel(v2)) { newV.splice((i + 1) % newV.length, 1); } else { i++; }

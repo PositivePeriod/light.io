@@ -1,6 +1,4 @@
-import { Visualizer } from "../system/visualizer.js";
 import { Line } from "./line.js";
-import { Color } from "./color.js";
 
 export class Polygon {
     constructor(vertices) {
@@ -60,8 +58,8 @@ export class Polygon {
         //     if (flag) { break; }
         // }
         // if (flag) {
-        //     Visualizer.addFunc("time", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [this.edges[a]]);
-        //     Visualizer.addFunc("time", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [other.edges[b]]);
+        //     Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [this.edges[a]]);
+        //     Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [other.edges[b]]);
         // }
         // return flag
         return this.edges.some(e1 => other.edges.some(e2 => e1.intersectWith(e2, false) !== null));

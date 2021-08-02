@@ -3,14 +3,13 @@ import { ObjectSystem } from "../system/objectSystem.js"
 import { OrthogonalVector, PolarVector } from "../util/vector.js";
 import { Color } from "../util/color.js";
 import { Visualizer } from "../system/visualizer.js";
-import { KeyboardManager, MouseManager } from "../util/inputManager.js";
+import { InputManager } from "../util/inputManager.js";
 import { Polygon } from "../util/polygon.js";
 
 export class MovableObject extends GameObject {
-    constructor(x, y, id, keyboard, mouse) {
+    constructor(x, y, id, input) {
         super(x, y);
-        this.keyboard = keyboard || new KeyboardManager();
-        this.mouse = mouse || new MouseManager();
+        this.input = input || new InputManager();
         this.id = id;
         this.type.push("MovableObject");
         this.color = Color.Gray;
@@ -31,28 +30,13 @@ export class MovableObject extends GameObject {
         this.visibleRange = 500;
         this.visibleArea = new Polygon();
         this.visibleEdges = [];
-        this.activate();
-    }
-
-    toggle() {
-        this.keyboard.toggle();
-        this.mouse.toggle();
-    }
-
-    activate() {
-        this.keyboard.activate();
-        this.mouse.activate();
-    }
-
-    deactivate() {
-        this.keyboard.deactivate();
-        this.mouse.deactivate();
+        this.input.activate();
     }
 
     move() {
         var direction = new OrthogonalVector();
         for (const [keyName, value] of Object.entries(this.movingKey)) {
-            if (this.keyboard.isPressed(keyName)) {
+            if (this.input.keyboard.isPressed(keyName)) {
                 direction.addBy(new OrthogonalVector(value.x, value.y));
             }
         }

@@ -1,5 +1,3 @@
-import { Visualizer } from "../system/visualizer.js";
-import { Color } from "./color.js";
 import { OrthogonalVector, PolarVector } from "./vector.js";
 
 export class Line {
@@ -37,7 +35,7 @@ export class Line {
         if (this.infinite) { return d2 } else { return (d1 < 0 || this.vector.r < d1) ? Math.min(d.r, p.minus(this.p2).r) : d2 }
     }
 
-    intersectWith(other, infinite = false) {
+    intersectWith(other, infinite = false, strict = false) {
         // https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
         if (this.vector.parallel(other.vector)) {
             var v = other.p1.minus(this.p1);
@@ -65,6 +63,7 @@ export class Line {
             const u = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
             if (!(infinite || this.infinite) && !(0 <= t && t <= 1)) { return null }
             if (!(infinite || other.infinite) && !(0 <= u && u <= 1)) { return null }
+            if (strict && (!(0 < t && t < 1) || !(0 < t && t < 1))) { return null }
             var p = p1.interpolate(p2, t);
             return p
         }
@@ -189,3 +188,22 @@ export function segmentInFrontOf(s1, s2, relativePoint) {
 
     return false;
 };
+
+export function unionParallelLine(s1, s2) {
+    var minV = Number.POSITIVE_INFINITY;
+    var minP = null;
+    var maxV = Number.NEGATIVE_INFINITY;
+    var maxP = null;
+    [s1.p1, s1.p2, s2.p1, s2.p2].forEach(p => {
+        var projection = p.scalarProjectTo(s1.vector);
+        if (projection < minV) {
+            minV = projection;
+            minP = p;
+        }
+        if (projection > maxV) {
+            maxV = projection;
+            maxP = p;
+        }
+    });
+    return new Line(minP, maxP, false)
+}

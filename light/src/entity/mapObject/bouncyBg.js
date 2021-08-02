@@ -21,6 +21,7 @@ export class BouncyBackground extends MapObject {
             case "Rect":
                 var pos = other.pos.minus(this.pos);
                 if (this.width > this.height) {
+                    console.log('u8u8u8');
                     var l = (this.width - this.height) / 2;
                     if (Math.abs(pos.x) <= l) {
                         if (pos.y === 0) { break; }
@@ -34,7 +35,7 @@ export class BouncyBackground extends MapObject {
                     var l = (this.height - this.width) / 2;
                     if (Math.abs(pos.y) <= l) {
                         if (pos.x === 0) { break; }
-                        var force = new PolarVector(this.bounce / Math.abs(pos.x), pos.x > 0 ? Math.PI : 0);
+                        var force = new PolarVector(this.bounce / Math.abs(pos.x), pos.x > 0 ? 0 : Math.PI);
                     } else {
                         pos.addBy(new PolarVector(l, pos.y > 0 ? Math.PI * 3 / 2 : Math.PI / 2));
                         var mag = this.bounce / pos.r;
@@ -46,7 +47,7 @@ export class BouncyBackground extends MapObject {
             case "Circle":
                 var pos = other.pos.minus(this.pos);
                 if (pos.r !== 0) {
-                    var mag = this.bounce / Math.abs(pos.r);
+                    var mag = this.bounce / pos.r;
                     var force = new PolarVector(mag, pos.theta);
                     other.applyForce(force);
                 }
@@ -67,6 +68,7 @@ export class BouncyBackground extends MapObject {
                 // TODO
                 break;
         }
+        return force
     }
 
     collideAfter() { return; }

@@ -22,13 +22,9 @@ export class GameObject {
         this.opaque = false;
     }
 
-    applyForce(force) {
-        this.force.addBy(force.toOrthogonal());
-    }
+    applyForce(force) { this.force.addBy(force.toOrthogonal()); }
 
-    setPos(x, y) {
-        this.pos = new OrthogonalVector(x, y);
-    }
+    setPos(x, y) { this.pos = new OrthogonalVector(x, y); }
 
     update(dt) {
         var accel = this.force.multiply(1 / this.mass);
@@ -74,13 +70,9 @@ export class GameObject {
         }
     }
 
-    draw() {
-        this.drawFuncUid = Visualizer.addFunc("static", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
-    }
+    draw() { this.drawFuncUid = Visualizer.addFunc("static", function(layer, obj) { this.drawObject(layer, obj); }, [this]); }
 
-    removeDraw() {
-        Visualizer.removeFunc("static", this.drawFuncUid);
-    }
+    removeDraw() { Visualizer.removeFunc("static", this.drawFuncUid); }
 
     isCollidedWith(other) {
         return Collision.isCollided(this, other);

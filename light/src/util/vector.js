@@ -111,7 +111,7 @@ export class PolarVector extends Vector {
         this.checkZero();
     }
 
-    negaitve() {
+    negative() {
         return new PolarVector(-this.r, this.theta);
     }
 

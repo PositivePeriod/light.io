@@ -37,3 +37,7 @@ export class RigidBackground extends MapObject {
 
     collideAfter(other) { other.velocity = new OrthogonalVector(); }
 }
+
+export class RigidLine extends MapObject {
+    // TODO
+}

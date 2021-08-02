@@ -22,7 +22,7 @@ class Visualizer {
         this.addLayer("visibleEdge");
         this.addLayer("panel");
         this.addLayer("mover");
-        this.addLayer("time", { "drawReset": true, "funcReset": true });
+        this.addLayer("one-shot", { "drawReset": true, "funcReset": true });
 
         this.pixelRatio = window.devicePixelRatio > 1 ? 2 : 1;
         window.addEventListener("resize", this.resize.bind(this), false);
@@ -86,7 +86,7 @@ class Visualizer {
 
     initDraw() {
         this.resetLayer("master", this.master);
-        ["visibleArea", "static", "visibleEdge", "panel", "mover", "time"].forEach(name => {
+        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot"].forEach(name => {
             var layer = this.findLayer(name);
             var funcs = this.layersFunc.get(name);
             this.resetLayer(name, layer);
@@ -96,8 +96,9 @@ class Visualizer {
     }
 
     draw() {
+        // this.initDraw(); return;
         this.resetLayer("master", this.master);
-        ["visibleArea", "static", "visibleEdge", "panel", "mover", "time"].forEach(name => {
+        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot"].forEach(name => {
             var layer = this.findLayer(name);
             var info = this.layersInfo.get(name);
             var funcs = this.layersFunc.get(name);

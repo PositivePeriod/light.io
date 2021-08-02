@@ -1,66 +1,88 @@
 // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code - key name
 // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key - key event
 
-// TODO change into new Map()
+export class InputManager {
+    constructor(log = false) {
+        this.keyboard = new KeyboardManager(log);
+        this.mouse = new MouseManager(log);
+    }
+
+    toggle() {
+        this.keyboard.toggle();
+        this.mouse.toggle();
+    }
+
+    activate() {
+        this.keyboard.activate();
+        this.mouse.activate();
+    }
+
+    deactivate() {
+        this.keyboard.deactivate();
+        this.mouse.deactivate();
+    }
+}
 
 export class KeyboardManager {
-    constructor(log=false) {
+    constructor(log = false) {
         this.log = log;
 
-        this.keyStatus = {};
-        this.keyCallback = {};
+        this.keyStatus = new Map();
+        this.keyCallback = new Map();
         this.active = false;
 
         window.addEventListener("keydown", this.handler.bind(this));
         window.addEventListener("keyup", this.handler.bind(this));
     }
 
-    isPressed(keyCode) {
-        return keyCode in this.keyStatus ? this.keyStatus[keyCode] : false;
+    waitKeyUp(keycode = null) {
+        // Have not used -> not verified in application
+        return new Promise(function(resolve, reject) {
+            window.addEventListener("mouseup",
+                function(e) { if (keycode === null || keycode === e.code) { resolve(); } }.bind(this));
+        }.bind(this));
     }
+
+    isPressed(keyCode) { return this.keyStatus.has(keyCode) ? this.keyStatus.get(keyCode) : false; }
 
     handler(e) {
         if (!this.active) { return; }
         if (this.log) { console.log(e.type, e.code); }
         switch (e.type) {
             case "keydown":
-                this.keyStatus[e.code] = true;
-                if (e.code in this.keyCallback) {
-                    if (this.log) { console.log("listen", e.code) }
-                    this.keyCallback[e.code]();
+                this.keyStatus.set(e.code, true);
+                if (this.keyCallback.has(e.code)) {
+                    if (this.log) { console.log("listen", e.code); }
+                    this.keyCallback.get(e.code)();
                 }
                 break;
             case "keyup":
-                this.keyStatus[e.code] = false;
+                this.keyStatus.set(e.code, false);
                 break;
             default:
                 break;
         }
     }
 
-    listen(keyCode, callback) {
-        this.keyCallback[keyCode] = callback;
-    }
+    listen(keyCode, callback) { this.keyCallback.set(keyCode, callback); }
 
     toggle() { if (this.active) { this.deactivate(); } else { this.activate(); } }
 
     activate() { this.active = true; }
 
     deactivate() {
-        this.keyStatus = {};
+        this.keyStatus = new Map();
         this.active = false;
     }
 }
 
 export class MouseManager {
-    constructor(log=false) {
+    constructor(log = false) {
         this.log = log;
 
-        this.mouseCallback = {};
-        this.x = null;
-        this.y = null;
-        this.downX = null;
-        this.downY = null;
+        this.mouseCallback = new Map();
+        this.pos = { "x": null, "y": null };
+        this.downPos = { "x": null, "y": null };
         this.isPressed = false;
         this.active = false;
 
@@ -69,11 +91,10 @@ export class MouseManager {
         window.addEventListener("mouseup", this.handler.bind(this));
     }
 
-    getPoint() {
+    waitMouseUp() {
         return new Promise(function(resolve, reject) {
-            window.addEventListener("mouseup", function() {
-                resolve({ "downX": this.downX, "downY": this.downY, "upX": this.upX, "upY": this.upY });
-            }.bind(this));
+            window.addEventListener("mouseup",
+                function() { resolve({ "downPos": this.downPos, "upPos": this.upPos }); }.bind(this));
         }.bind(this));
     }
 
@@ -84,22 +105,17 @@ export class MouseManager {
         if (this.log) { console.log(e.type, x, y); }
         switch (e.type) {
             case "mousemove":
-                this.x = x;
-                this.y = y;
+                this.pos = { "x": x, "y": y };
                 break;
             case "mousedown":
-                this.downX = x;
-                this.downY = y;
+                this.downPos = { "x": x, "y": y };
                 this.isPressed = true;
-                if (e.type in this.mouseCallback) { this.mouseCallback[e.type](this.downX, this.downY); }
+                if (this.mouseCallback.has(e.type)) { this.mouseCallback.get(e.type)(this.downX, this.downY); }
                 break;
             case "mouseup":
-                this.upX = x;
-                this.upY = y;
+                this.upPos = { "x": x, "y": y };
                 this.isPressed = false;
-                if (e.type in this.mouseCallback) {
-                    this.mouseCallback[e.type](this.downX, this.downY, this.upX, this.upY);
-                }
+                if (this.mouseCallback.has(e.type)) { this.mouseCallback.get(e.type)(this.downX, this.downY, this.upX, this.upY); }
                 break;
             case "click":
                 break;
@@ -110,19 +126,15 @@ export class MouseManager {
         }
     }
 
-    listen(eventType, callback) {
-        this.mouseCallback[eventType] = callback;
-    }
+    listen(eventType, callback) { this.mouseCallback.set(eventType, callback); }
 
     toggle() { if (this.active) { this.deactivate(); } else { this.activate(); } }
 
     activate() { this.active = true; }
 
     deactivate() {
-        this.x = null;
-        this.y = null;
-        this.downX = null;
-        this.downY = null;
+        this.pos = { "x": null, "y": null };
+        this.downPos = { "x": null, "y": null };
         this.isPressed = false;
         this.active = false;
     }

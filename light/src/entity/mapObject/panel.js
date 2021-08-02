@@ -36,7 +36,7 @@ class Panel extends MapObject {
             // var string = [this.observers.length.toString(), this.alreadyWatched.toString()];
             // if (mover.visibleArea.intersectWith(this.polygon)) { string.push("intersect"); }
             // if (mover.visibleArea.includePoint(this.pos)) { string.push("include"); }
-            // Visualizer.addFunc("time", function(layer, obj, string) { this.drawText(layer, obj.pos, string); }, [this, string]);
+            // Visualizer.addFunc("one-shot", function(layer, obj, string) { this.drawText(layer, obj.pos, string); }, [this, string]);
         });
     }
 }
@@ -115,7 +115,7 @@ export class UncertainPanel extends Panel {
         this.type.push("UncertainPanel");
 
         this.possibility = 0.8;
-        this.state = "B";
+        this.state = " ";
         this.pseudoObject = null;
         this.alreadyWatched = false;
     }
@@ -128,15 +128,15 @@ export class UncertainPanel extends Panel {
     }
 
     refresh() {
-        var state = Math.random() > this.possibility ? "W" : "B";
-        if (this.state === "W") {
+        var state = Math.random() > this.possibility ? "R" : " ";
+        if (this.state === "R") {
             ObjectSystem.remove(this.pseudoObject);
             Shadow.removeWalls("static", this.pseudoObject.wallUIDs);
             this.pseudoObject.removeDraw();
             this.pseudoObject = null;
         }
         switch (state) {
-            case "W":
+            case "R":
                 var obj = new RigidBackground(this.pos.x, this.pos.y);
                 obj.makeShape("Rect", { "width": this.width, "height": this.height, "color": Color.Black });
                 ObjectSystem.add(obj);
@@ -154,7 +154,81 @@ export class UncertainPanel extends Panel {
                 obj.draw();
                 this.pseudoObject = obj;
                 break;
-            case "B":
+            case " ":
+                break;
+        }
+        this.state = state;
+        Visualizer.initDraw();
+    }
+
+    update() {
+        super.update();
+        if (this.observers.length === 0) { // not shown
+            if (this.alreadyWatched) {
+                this.refresh();
+                this.alreadyWatched = false;
+            } else {
+                // if (this.pseudoObject !== null) {
+                //     this.pseudoObject.color = Color.Blue;
+                //     Visualizer.initDraw();
+                // }
+            }
+        } else { // shown
+            // if (this.pseudoObject !== null) {
+            //     this.pseudoObject.color = Color.Red;
+            //     Visualizer.initDraw();
+            // }
+            this.alreadyWatched = true;
+        }
+    }
+}
+
+export class TimeAttackPanel extends Panel {
+    constructor(x, y) {
+        super(x, y);
+        this.type.push("TimeAttackPanel");
+
+        this.possibility = 0.8;
+        this.state = " ";
+        this.pseudoObject = null;
+        this.alreadyWatched = false;
+    }
+
+    draw() {}
+
+    makeShape(shape, option) {
+        super.makeShape(shape, option);
+        this.refresh();
+    }
+
+    refresh() {
+        var state = Math.random() > this.possibility ? "R" : " ";
+        if (this.state === "R") {
+            ObjectSystem.remove(this.pseudoObject);
+            Shadow.removeWalls("static", this.pseudoObject.wallUIDs);
+            this.pseudoObject.removeDraw();
+            this.pseudoObject = null;
+        }
+        switch (state) {
+            case "R":
+                var obj = new RigidBackground(this.pos.x, this.pos.y);
+                obj.makeShape("Rect", { "width": this.width, "height": this.height, "color": Color.Black });
+                ObjectSystem.add(obj);
+                var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
+                var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
+                var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
+                var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
+                obj.edges = [
+                    new VisibilitySegment(p1, p3),
+                    new VisibilitySegment(p1, p2),
+                    new VisibilitySegment(p3, p4),
+                    new VisibilitySegment(p2, p4)
+                ]
+                obj.wallUIDs = Shadow.addWalls("static", obj.edges);
+                obj.draw();
+                this.pseudoObject = obj;
+                break;
+            case " ":
                 break;
         }
         this.state = state;

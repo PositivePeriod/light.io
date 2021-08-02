@@ -1,26 +1,26 @@
 import { Visualizer } from "./system/visualizer.js";
-import { KeyboardManager, MouseManager } from "./util/inputManager.js";
+import { InputManager, KeyboardManager, MouseManager } from "./util/inputManager.js";
 import { MovableObject } from "./entity/movableObject.js";
 import { RigidBackground } from "./entity/mapObject/rigidBg.js";
 import { Angle, OrthogonalVector, PolarVector } from "./util/vector.js";
 import { VisibilitySegment } from "./util/line.js";
 import { ObjectSystem } from "./system/objectSystem.js"
 
-import { mapData } from "./data/map1-5.js"
+import { mapData } from "./data/map2.js"
 import { NegativePanel, PositivePanel, UncertainPanel } from "./entity/mapObject/panel.js";
 import { Color } from "./util/color.js";
 import { Shadow } from "./system/shadow.js";
+import { BouncyBackground } from "./entity/mapObject/bouncyBg.js";
+import { MovingBackground } from "./entity/mapObject/movingBg.js";
 
 export class Game {
     static fps = 10;
     static dt = 1 / this.fps;
 
     constructor() {
-        this.keyboard = new KeyboardManager();
-        this.mouse = new MouseManager();
-        this.keyboard.listen("KeyG", this.addGameObject.bind(this));
-        this.keyboard.activate();
-        this.mouse.activate();
+        this.input = new InputManager();
+        this.input.keyboard.listen("KeyG", this.addGameObject.bind(this));
+        this.input.activate();
 
         this.initGameSize();
         this.initGameObjects();
@@ -54,15 +54,27 @@ export class Game {
                 var posY = this.startY + this.gridSize * (y + 0.5);
                 var obj = null;
                 switch (blockType) {
-                    case "W": // Wall
+                    case "R": // RigidBg
                         obj = new RigidBackground(posX, posY);
                         obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                        break;
+                    case "B": // BouncyBg
+                        obj = new BouncyBackground(posX, posY, 60000);
+                        obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                        break;
+                    case "m": // MovingBg
+                        obj = new MovingBackground(posX, posY, 60000);
+                        obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                        break;
+                    case "c": // MovingBg
+                        obj = new MovingBackground(posX, posY, 150000);
+                        obj.makeShape("Circle", { "rad": this.gridSize * 0.1, "height": this.gridSize, "color": Color.Black });
                         break;
                     case "M": // Mover
                         obj = new MovableObject(posX, posY, this.moverCounter);
                         var color = this.moverColor[this.moverCounter % this.moverColor.length]
                         obj.makeShape("Circle", { "rad": this.gridSize * 0.2, "color": color });
-                        this.keyboard.listen(`Digit${++this.moverCounter}`, obj.toggle.bind(obj));
+                        this.input.keyboard.listen(`Digit${++this.moverCounter}`, obj.input.toggle.bind(obj.input));
                         break;
                     case "P": // PositivePanel
                     case "N": // NegativePanel
@@ -78,7 +90,7 @@ export class Game {
                         obj = new RigidBackground(posX, posY);
                         obj.makeShape("Circle", { "rad": this.gridSize * 0.5, "color": Color.Black });
                         break;
-                    case "B": // Background
+                    case " ": // Empty Background
                         break;
                     case "L": // Line
                         var layer = Visualizer.findLayer("static");
@@ -97,10 +109,26 @@ export class Game {
                                 var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
                                 var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
                                 var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
-                                Shadow.addWalls("static", [
-                                    new VisibilitySegment(p1, p3), new VisibilitySegment(p1, p2),
-                                    new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)
-                                ]);
+                                if (obj instanceof MovingBackground) {
+                                    var func = function(group, mover, obj) {
+                                        var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
+                                        var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
+                                        var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
+                                        var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
+                                        this.addWalls("dynamic", [
+                                            new VisibilitySegment(p1, p3),
+                                            new VisibilitySegment(p1, p2),
+                                            new VisibilitySegment(p3, p4),
+                                            new VisibilitySegment(p2, p4)
+                                        ]);
+                                    }
+                                    Shadow.addFunc("dynamic", func, [obj]);
+                                } else {
+                                    Shadow.addWalls("static", [
+                                        new VisibilitySegment(p1, p3), new VisibilitySegment(p1, p2),
+                                        new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)
+                                    ]);
+                                }
                                 break;
                             case "Circle":
                                 var func = function(group, mover, obj) {
@@ -119,9 +147,9 @@ export class Game {
                                         line.setProp(mover, "CW", angle1);
                                     }
                                     line.obj = obj;
-                                    this.addWalls("semi-static", [line]);
+                                    this.addWalls("dynamic", [line]);
                                 }
-                                Shadow.addFunc("semi-static", func, [obj]);
+                                Shadow.addFunc("dynamic", func, [obj]);
                                 break;
                             default:
                                 break;
@@ -135,15 +163,17 @@ export class Game {
 
     async addGameObject() {
         var blockType = window.prompt("message", "default");
-        var point = await this.mouse.getPoint();
-        var posX = (point.downX + point.upX) / 2;
-        var posY = (point.downY + point.upY) / 2;
-        var width = Math.abs(point.upX - point.downX);
-        var height = Math.abs(point.upY - point.downY);
-        var rad = ((point.upX - point.downX) ** 2 + (point.upY - point.downY) ** 2) ** 0.5;
+        var point = await this.input.mouse.waitMouseUp();
+        var downPos = point.downPos;
+        var upPos = point.upPos;
+        var posX = (downPos.x + upPos.x) / 2;
+        var posY = (downPos.y + upPos.y) / 2;
+        var width = Math.abs(upPos.x - downPos.x);
+        var height = Math.abs(upPos.y - downPos.y);
+        var rad = (width ** 2 + height ** 2) ** 0.5;
         var obj = null;
         switch (blockType) {
-            case "W": // Wall
+            case "R": // Wall
                 obj = new RigidBackground(posX, posY);
                 obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
                 break;
@@ -151,7 +181,7 @@ export class Game {
                 obj = new MovableObject(posX, posY, this.moverCounter);
                 var color = this.moverColor[this.moverCounter % this.moverColor.length]
                 obj.makeShape("Circle", { "rad": this.gridSize * 0.2, "color": color });
-                this.keyboard.listen(`Digit${++this.moverCounter}`, obj.toggle.bind(obj));
+                this.input.keyboard.listen(`Digit${++this.moverCounter}`, obj.input.toggle.bind(obj.input));
                 break;
             case "P": // PositivePanel
             case "N": // NegativePanel
@@ -163,11 +193,11 @@ export class Game {
                 obj = new RigidBackground(posX, posY);
                 obj.makeShape("Circle", { "rad": this.gridSize * 0.5, "color": Color.Black });
                 break;
-            case "B": // Background
+            case " ": // Background
                 break;
             case "L": // Line
-                var p1 = new OrthogonalVector(point.downX, point.downY);
-                var p2 = new OrthogonalVector(point.upX, point.upY);
+                var p1 = new OrthogonalVector(downPos.x, downPos.y);
+                var p2 = new OrthogonalVector(upPos.x, upPos.y);
                 Shadow.addWalls(Shadow.findGroup("static"), [new VisibilitySegment(p1, p2)]);
                 break;
             default:
@@ -209,7 +239,7 @@ export class Game {
                             line.obj = obj;
                             group.push(line);
                         }
-                        Shadow.addFunc("semi-static", func, [obj]);
+                        Shadow.addFunc("dynamic", func, [obj]);
                         break;
                     default:
                         break;
@@ -226,7 +256,7 @@ export class Game {
         var movers = ObjectSystem.find("MovableObject");
         var maps = ObjectSystem.find("MapObject");
         movers.forEach(mover => { mover.update(Game.dt, Game.turn); });
-        maps.forEach(map => { map.update(); });
+        maps.forEach(map => { map.update(Game.dt); });
         movers.forEach(mover => {
             var result = Shadow.calcVisiblility(mover);
             mover.visibleEdges = result.visibleEdges;
@@ -234,23 +264,24 @@ export class Game {
         });
         Visualizer.draw();
 
-        Game.checkFPS();
+        Game.checkFPS(true);
     }
 
-    static checkFPS() {
-        var fps = 1000 / (Date.now() - this.time);
-        if (this.turn > this.fps) { this.minFPS = Math.min(this.minFPS, fps); }
-        this.averageFPS = (this.averageFPS * this.turn + fps) / (++this.turn);
-        if (this.turn % (this.fps) === 0) { // roughly 1s
+    static checkFPS(log = false) {
+        var time = Date.now() - this.time;
+        if (time.turn > this.fps) { this.maxTime = Math.max(time, this.maxTime); } // Start after roughly 1s
+        this.averageTime = (this.averageTime * this.turn + time) / (++this.turn);
+        if (log && this.turn % (this.fps) === 0) { // iterate every roughly 1s
             console.clear();
-            console.log("MinFPS :", this.minFPS.toFixed(2));
-            console.log("AverageFPS :", this.averageFPS.toFixed(2));
-            console.log("CurrentFPS :", fps.toFixed(2));
+            console.log("Turn :", this.turn);
+            console.log("MinFPS :", (1000 / this.maxTime).toFixed(2));
+            console.log("AverageFPS :", (1000 / this.averageTime).toFixed(2));
+            console.log("CurrentFPS :", (1000 / time).toFixed(2));
         }
     }
 
     static time = 0;
-    static minFPS = Infinity
-    static averageFPS = 0;
+    static maxTime = 0;
+    static averageTime = 0;
     static turn = 0;
 }
