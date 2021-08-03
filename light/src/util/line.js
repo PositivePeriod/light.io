@@ -32,7 +32,7 @@ export class Line {
         var d = p.minus(this.p1);
         var d1 = d.scalarProjectTo(this.vector);
         var d2 = d.scalarProjectTo(this.vector.normal());
-        if (this.infinite) { return d2 } else { return (d1 < 0 || this.vector.r < d1) ? Math.min(d.r, p.minus(this.p2).r) : d2 }
+        if (this.infinite) { return Math.abs(d2) } else { return (d1 < 0 || this.vector.r < d1) ? Math.min(d.r, p.minus(this.p2).r) : Math.abs(d2) }
     }
 
     intersectWith(other, infinite = false, strict = false) {

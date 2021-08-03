@@ -1,26 +1,59 @@
+function eqSet(as, bs) {
+    if (as.size !== bs.size) return false;
+    for (var a of as)
+        if (!bs.has(a)) return false;
+    return true;
+}
+
 export class Color {
     // RGB is actually sRGB
     // https://www.w3.org/TR/css-color-3/#hsl-color
     // https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
     // https://en.wikipedia.org/wiki/HSL_and_HSV#Formal_derivation
 
-    static White = new Color("hex", "#FFFFFF");
-    static Gray = new Color("hex", "#888888");
-    static Black = new Color("hex", "#000000");
+    static White = new Color("hex", "#FFFFFF").setName("White");
+    static Gray = new Color("hex", "#888888").setName("Gray");
+    static Black = new Color("hex", "#000000").setName("Black");
 
-    static Red = new Color("hex", "#F44336");
-    static Green = new Color("hex", "#4CAF50");
-    static Blue = new Color("hex", "#2196F3");
+    static Red = new Color("hex", "#F44336").setName("Red");
+    static Green = new Color("hex", "#4CAF50").setName("Green");
+    static Blue = new Color("hex", "#2196F3").setName("Blue");
 
-    static Yellow = new Color("hex", "#FFFF00");
-    static Magenta = new Color("hex", "#FF00FF");
-    static Cyan = new Color("hex", "#00FFFF");
+    static Yellow = new Color("hex", "#F7C475").setName("Yellow");
+    static Magenta = new Color("hex", "#F5B2F6").setName("Magenta");
+    static Cyan = new Color("hex", "#63DEF7").setName("Cyan");
 
     static random() {
         var color = "#" + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, "0");
         return new Color("hex", color)
     }
 
+    static add(colors) {
+        var colorsSet = new Set(colors);
+        switch (colors.length) {
+            case 0:
+                return this.Black
+                break;
+            case 1:
+                return colors[0]
+                break;
+            case 2:
+                if (eqSet(colorsSet, new Set([this.Red, this.Green]))) { return this.Yellow }
+                if (eqSet(colorsSet, new Set([this.Red, this.Blue]))) { return this.Magenta }
+                if (eqSet(colorsSet, new Set([this.Green, this.Blue]))) { return this.Cyan }
+                if (eqSet(colorsSet, new Set([this.Yellow, this.Blue]))) { return this.White }
+                if (eqSet(colorsSet, new Set([this.Magenta, this.Green]))) { return this.White }
+                if (eqSet(colorsSet, new Set([this.Cyan, this.Red]))) { return this.White }
+                break;
+            case 3:
+                if (eqSet(colorsSet, new Set([this.Red, this.Green, this.Blue]))) { return this.White }
+                break;
+        }
+        var r = colors.reduce((accumulator, currentValue) => accumulator + currentValue.rgb[0], 0) / colors.length;
+        var g = colors.reduce((accumulator, currentValue) => accumulator + currentValue.rgb[1], 0) / colors.length;
+        var b = colors.reduce((accumulator, currentValue) => accumulator + currentValue.rgb[2], 0) / colors.length;
+        return new Color("rgb", r, g, b);
+    }
 
     static isValidColor(string) {
         var s = new Option().style;
@@ -74,7 +107,7 @@ export class Color {
     }
 
     static HUEtoRGB(m1, m2, h) {
-        if (h < 0) { h ++; }
+        if (h < 0) { h++; }
         if (h > 1) { h -= 1; }
         if (h < 1 / 6) return m1 + (m2 - m1) * h * 6;
         if (h < 1 / 2) return m2;
@@ -94,18 +127,21 @@ export class Color {
     constructor(type, ...color) {
         this.type = type;
         switch (type) {
+            case "HSL":
             case "hsl":
                 this.hsl = color.slice(0, 3);
                 this.rgb = Color.HSLtoRGB(...this.hsl);
                 this.hex = Color.RGBtoHEX(...this.rgb);
                 this.alpha = color[3] || 1;
                 break;
+            case "RGB":
             case "rgb":
                 this.rgb = color.slice(0, 3);
                 this.hsl = Color.RGBtoHSL(...this.rgb);
                 this.hex = Color.RGBtoHEX(...this.rgb);
                 this.alpha = color[3] || 1;
                 break;
+            case "HEX":
             case "hex":
                 this.hex = color[0].slice(0, 7);
                 this.rgb = Color.HEXtoRGB(this.hex);
@@ -115,8 +151,14 @@ export class Color {
         }
     }
 
+    setName(name) {
+        this.name = name;
+        return this
+    }
+
     setAlpha(alpha) {
         this.alpha = alpha;
+        return this
     }
 
     HSL() {
@@ -143,7 +185,7 @@ export class Color {
 
     HEXA(a) {
         var alpha = a || this.alpha;
-        return this.hex + Math.round(alpha*255).toString(16).toUpperCase();
+        return this.hex + Math.round(alpha * 255).toString(16).toUpperCase();
     }
 
     represent() {

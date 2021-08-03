@@ -1,3 +1,4 @@
+import { Visualizer } from "../system/visualizer.js";
 import { Line } from "./line.js";
 
 export class Polygon {
@@ -63,5 +64,26 @@ export class Polygon {
         // }
         // return flag
         return this.edges.some(e1 => other.edges.some(e2 => e1.intersectWith(e2, false) !== null));
+    }
+
+    intersectWithCircle(circle) {
+        // var flag = false;
+        // for (let i = 0; i < this.edges.length; i++) {
+        //     if (this.edges[i].distanceToPoint(circle.pos) < circle.rad) {
+        //         console.log(this.edges[i].distanceToPoint(circle.pos), circle.rad);
+        //         flag = true;
+        //         var a = i;
+        //         break;
+        //     }
+        // }
+        // this.edges.forEach(edge => {
+        // Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line); }, [edge]);
+        // })
+        // if (flag) {
+        //     Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line); }, [this.edges[a]]);
+        //     Visualizer.addFunc("one-shot", function(layer, circle) { this.drawCircle(layer, {"pos":circle.pos}); }, [circle]);
+        // }
+        // return flag
+        return this.edges.some(e => e.distanceToPoint(circle.pos) < circle.rad);
     }
 }

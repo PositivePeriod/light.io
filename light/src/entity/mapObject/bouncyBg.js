@@ -21,7 +21,6 @@ export class BouncyBackground extends MapObject {
             case "Rect":
                 var pos = other.pos.minus(this.pos);
                 if (this.width > this.height) {
-                    console.log('u8u8u8');
                     var l = (this.width - this.height) / 2;
                     if (Math.abs(pos.x) <= l) {
                         if (pos.y === 0) { break; }
@@ -47,9 +46,15 @@ export class BouncyBackground extends MapObject {
             case "Circle":
                 var pos = other.pos.minus(this.pos);
                 if (pos.r !== 0) {
-                    var mag = this.bounce / pos.r;
-                    var force = new PolarVector(mag, pos.theta);
-                    other.applyForce(force);
+                    if (other.shape === "Circle") {
+                        if (other.shape === "Circle") {
+                            var mag = this.bounce / (pos.r - other.rad);
+                        } else {
+                            var mag = this.bounce / pos.r;
+                        }
+                        var force = new PolarVector(mag, pos.theta);
+                        other.applyForce(force);
+                    }
                 }
                 break;
             case "Donut":

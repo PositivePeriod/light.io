@@ -1,94 +1,111 @@
 import { Visualizer } from "./system/visualizer.js";
-import { InputManager, KeyboardManager, MouseManager } from "./util/inputManager.js";
+import { InputManager } from "./util/inputManager.js";
 import { MovableObject } from "./entity/movableObject.js";
 import { RigidBackground } from "./entity/mapObject/rigidBg.js";
 import { Angle, OrthogonalVector, PolarVector } from "./util/vector.js";
 import { VisibilitySegment } from "./util/line.js";
 import { ObjectSystem } from "./system/objectSystem.js"
 
-import { mapData } from "./data/map2.js"
-import { NegativePanel, PositivePanel, UncertainPanel } from "./entity/mapObject/panel.js";
+import { mapData } from "./data/map-1.js"
+import { NegativePanel, PositivePanel, TimeAttackPanel, UncertainPanel } from "./entity/mapObject/panel.js";
 import { Color } from "./util/color.js";
 import { Shadow } from "./system/shadow.js";
 import { BouncyBackground } from "./entity/mapObject/bouncyBg.js";
 import { MovingBackground } from "./entity/mapObject/movingBg.js";
 
 export class Game {
-    static fps = 10;
+    static fps = 20;
     static dt = 1 / this.fps;
+    static score = 0;
 
     constructor() {
         this.input = new InputManager();
         this.input.keyboard.listen("KeyG", this.addGameObject.bind(this));
         this.input.activate();
 
-        this.initGameSize();
         this.initGameObjects();
         // this.initShadowNVisualizer();
         Visualizer.initDraw();
 
         setInterval(this.update.bind(this), Math.round(1000 / Game.fps));
     }
-
-    initGameSize() {
-        var stageWidth = Visualizer.stageWidth;
-        var stageHeight = Visualizer.stageHeight;
-        this.mapWidth = mapData.width;
-        this.mapHeight = mapData.height;
-        this.gridSize = Math.min(stageWidth / this.mapWidth, stageHeight / this.mapHeight) * 1;
-        this.startX = (stageWidth - this.gridSize * this.mapWidth) / 2;
-        this.startY = (stageHeight - this.gridSize * this.mapHeight) / 2;
-        this.gridSize = Math.min(this.gridSize);
-        this.startX = Math.min(this.startX);
-        this.startY = Math.min(this.startY);
-    }
-
     initGameObjects() {
+        this.grid = Visualizer.getGrid(mapData.width, mapData.height);
+
         this.moverColor = [Color.Red, Color.Blue, Color.Green];
-        this.panelType = { "P": PositivePanel, "N": NegativePanel, "U": UncertainPanel };
+        this.panelType = { "P": PositivePanel, "N": NegativePanel, "U": UncertainPanel, "T": TimeAttackPanel };
         this.moverCounter = 0;
-        for (let x = 0; x < this.mapWidth; x++) {
-            for (let y = 0; y < this.mapHeight; y++) {
+        for (let x = 0; x < mapData.width; x++) {
+            for (let y = 0; y < mapData.height; y++) {
                 var blockType = mapData.map[y][x].slice(0, 1);
-                var posX = this.startX + this.gridSize * (x + 0.5);
-                var posY = this.startY + this.gridSize * (y + 0.5);
+                var posX = this.grid.startX + this.grid.size * (x + 0.5);
+                var posY = this.grid.startY + this.grid.size * (y + 0.5);
                 var obj = null;
                 switch (blockType) {
                     case "R": // RigidBg
                         obj = new RigidBackground(posX, posY);
-                        obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                        obj.makeShape("Rect", { "width": this.grid.size, "height": this.grid.size, "color": Color.Black });
+                        break;
+                    case "r": // RigidBg
+                        obj = new RigidBackground(posX, posY);
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.5, "color": Color.Black });
                         break;
                     case "B": // BouncyBg
+                        obj = new BouncyBackground(posX, posY, 90000);
+                        obj.makeShape("Rect", { "width": this.grid.size, "height": this.grid.size, "color": Color.Black });
+                        break;
+                    case "b": // BouncyBg
                         obj = new BouncyBackground(posX, posY, 60000);
-                        obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.5, "color": Color.Black });
                         break;
                     case "m": // MovingBg
                         obj = new MovingBackground(posX, posY, 60000);
-                        obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                        obj.makeShape("Rect", { "width": this.grid.size, "height": this.grid.size, "color": Color.Black });
                         break;
                     case "c": // MovingBg
                         obj = new MovingBackground(posX, posY, 150000);
-                        obj.makeShape("Circle", { "rad": this.gridSize * 0.1, "height": this.gridSize, "color": Color.Black });
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.1, "height": this.grid.size, "color": Color.Black });
                         break;
                     case "M": // Mover
                         obj = new MovableObject(posX, posY, this.moverCounter);
                         var color = this.moverColor[this.moverCounter % this.moverColor.length]
-                        obj.makeShape("Circle", { "rad": this.gridSize * 0.2, "color": color });
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.2, "color": color });
                         this.input.keyboard.listen(`Digit${++this.moverCounter}`, obj.input.toggle.bind(obj.input));
+
+                        // obj.input.deactivate();
+                        // var func = function(obj) {
+                        //     ObjectSystem.find("MovableObject").forEach(mover => {
+                        //         if (mover.id !== this.id) { mover.input.deactivate(); } else { mover.input.activate(); }
+                        //     })
+                        // }
+                        // this.input.keyboard.listen(`Digit${++this.moverCounter}`, func.bind(obj));
+                        if (obj.id === 1) {
+                            obj.movingKey = {
+                                "KeyI": { x: 0, y: -1 },
+                                "KeyJ": { x: -1, y: 0 },
+                                "KeyK": { x: 0, y: 1 },
+                                "KeyL": { x: 1, y: 0 }
+                            }
+                        }
+
                         break;
                     case "P": // PositivePanel
                     case "N": // NegativePanel
                         obj = new this.panelType[blockType](posX, posY);
-                        obj.makeShape("Rect", { "width": this.gridSize * 0.2, "height": this.gridSize * 0.2 });
+                        obj.makeShape("Rect", { "width": this.grid.size * 0.2, "height": this.grid.size * 0.2 });
                         break;
                     case "U": // UncertainPanel
                         obj = new this.panelType[blockType](posX, posY);
-                        var size = this.gridSize;
+                        var size = this.grid.size;
                         obj.makeShape("Rect", { "width": size, "height": size });
+                        break;
+                    case "T": // TimeAttackPanel
+                        obj = new this.panelType[blockType](posX, posY);
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.2 });
                         break;
                     case "C": // Circle
                         obj = new RigidBackground(posX, posY);
-                        obj.makeShape("Circle", { "rad": this.gridSize * 0.5, "color": Color.Black });
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.5, "color": Color.Black });
                         break;
                     case " ": // Empty Background
                         break;
@@ -175,23 +192,23 @@ export class Game {
         switch (blockType) {
             case "R": // Wall
                 obj = new RigidBackground(posX, posY);
-                obj.makeShape("Rect", { "width": this.gridSize, "height": this.gridSize, "color": Color.Black });
+                obj.makeShape("Rect", { "width": this.grid.size, "height": this.grid.size, "color": Color.Black });
                 break;
             case "M": // Mover
                 obj = new MovableObject(posX, posY, this.moverCounter);
                 var color = this.moverColor[this.moverCounter % this.moverColor.length]
-                obj.makeShape("Circle", { "rad": this.gridSize * 0.2, "color": color });
+                obj.makeShape("Circle", { "rad": this.grid.size * 0.2, "color": color });
                 this.input.keyboard.listen(`Digit${++this.moverCounter}`, obj.input.toggle.bind(obj.input));
                 break;
             case "P": // PositivePanel
             case "N": // NegativePanel
             case "U": // UncertainPanel
                 obj = new this.panelType[blockType](posX, posY);
-                obj.makeShape("Rect", { "width": this.gridSize * 0.2, "height": this.gridSize * 0.2 });
+                obj.makeShape("Rect", { "width": this.grid.size * 0.2, "height": this.grid.size * 0.2 });
                 break;
             case "C": // Circle
                 obj = new RigidBackground(posX, posY);
-                obj.makeShape("Circle", { "rad": this.gridSize * 0.5, "color": Color.Black });
+                obj.makeShape("Circle", { "rad": this.grid.size * 0.5, "color": Color.Black });
                 break;
             case " ": // Background
                 break;
@@ -256,7 +273,7 @@ export class Game {
         var movers = ObjectSystem.find("MovableObject");
         var maps = ObjectSystem.find("MapObject");
         movers.forEach(mover => { mover.update(Game.dt, Game.turn); });
-        maps.forEach(map => { map.update(Game.dt); });
+        maps.forEach(map => { map.update(Game.dt, Game.turn); });
         movers.forEach(mover => {
             var result = Shadow.calcVisiblility(mover);
             mover.visibleEdges = result.visibleEdges;
@@ -264,7 +281,7 @@ export class Game {
         });
         Visualizer.draw();
 
-        Game.checkFPS(true);
+        Game.checkFPS();
     }
 
     static checkFPS(log = false) {

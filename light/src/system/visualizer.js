@@ -1,6 +1,8 @@
+import { Game } from "../game.js";
 import { Color } from "../util/color.js";
 import { Timer } from "../util/timer.js";
 import { UID } from "../util/uid.js";
+import { ObjectSystem } from "./objectSystem.js";
 
 // https://developer.mozilla.org/ko/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
 
@@ -23,9 +25,10 @@ class Visualizer {
         this.addLayer("panel");
         this.addLayer("mover");
         this.addLayer("one-shot", { "drawReset": true, "funcReset": true });
+        this.addLayer("multi-shot", { "drawReset": true, "funcReset": true });
 
         this.pixelRatio = window.devicePixelRatio > 1 ? 2 : 1;
-        window.addEventListener("resize", this.resize.bind(this), false);
+        window.addEventListener("resize", this.resize.bind(this));
         this.resize();
     }
 
@@ -84,9 +87,16 @@ class Visualizer {
         this.initDraw();
     }
 
+    getGrid(mapWidth, mapHeight) {
+        var size = Math.min(this.stageWidth / mapWidth, this.stageHeight / mapHeight) * 1;
+        var startX = (this.stageWidth - size * mapWidth) / 2;
+        var startY = (this.stageHeight - size * mapHeight) / 2;
+        return { "size": size, "startX": startX, "startY": startY }
+    }
+
     initDraw() {
         this.resetLayer("master", this.master);
-        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot"].forEach(name => {
+        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot", "multi-shot"].forEach(name => {
             var layer = this.findLayer(name);
             var funcs = this.layersFunc.get(name);
             this.resetLayer(name, layer);
@@ -98,7 +108,7 @@ class Visualizer {
     draw() {
         // this.initDraw(); return;
         this.resetLayer("master", this.master);
-        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot"].forEach(name => {
+        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot", "multi-shot"].forEach(name => {
             var layer = this.findLayer(name);
             var info = this.layersInfo.get(name);
             var funcs = this.layersFunc.get(name);
@@ -111,12 +121,40 @@ class Visualizer {
                         funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
                         layer.ctx.restore();
                         break;
+                    case "panel":
+                        var canvas = document.createElement("canvas");
+                        var ctx = canvas.getContext("2d");
+                        var pseudoLayer = { "canvas": canvas, "ctx": ctx };
+                        pseudoLayer.canvas.width = this.stageWidth * this.pixelRatio;
+                        pseudoLayer.canvas.height = this.stageHeight * this.pixelRatio;
+                        pseudoLayer.ctx.scale(this.pixelRatio, this.pixelRatio);
+                        ObjectSystem.find("MovableObject").forEach(mover => { this.drawPolygon(pseudoLayer, mover.visibleArea.vertices, { "color": Color.Gray }); })
+
+                        layer.ctx.save();
+                        funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
+                        layer.ctx.globalCompositeOperation = "destination-in";
+                        layer.ctx.drawImage(pseudoLayer.canvas, 0, 0);
+                        layer.ctx.restore();
+                        break;
                     default:
                         funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
                         break;
                 }
             }
-            if (info.funcReset) { this.layersFunc.set(name, new Map()); }
+            if (info.funcReset) {
+                switch (name) {
+                    case "multishot":
+                        var nextFunc = new Map();
+                        this.layersFunc.forEach((input, index) => {
+                            if (input.arg[0] > Game.turn) { nextFunc.set(index, input); }
+                        });
+                        this.layersFunc.set(name, nextFunc);
+                        break;
+                    default:
+                        this.layersFunc.set(name, new Map());
+                        break;
+                }
+            }
             switch (name) {
                 case "visibleEdge":
                     this.master.ctx.save();
@@ -152,8 +190,8 @@ class Visualizer {
     drawCircle(layer, obj, option = {}) {
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
-        var r = floor(obj.rad || 10);
-        var color = option.color || obj.color || Color.Black;
+        var r = floor(obj.rad);
+        var color = option.color || obj.color || Color.random();
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
@@ -165,21 +203,39 @@ class Visualizer {
         layer.ctx.restore();
     }
 
-    drawArc(layer, obj, option = {}) {
+    drawSector(layer, obj, option = {}) {
         var x = floor(obj.pos.x);
         var y = floor(obj.pos.y);
         var r = floor(obj.rad);
         var CCWAngle = obj.CCWAngle;
         var CWAngle = obj.CWAngle;
-        var color = option.color || obj.color || Color.White;
-        var CCW = option.CCW ? option.CCW : true
+        var color = option.color || obj.color || Color.random();
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
 
         layer.ctx.beginPath();
-        layer.ctx.arc(x, y, r, CCWAngle, CWAngle, CCW);
+        layer.ctx.moveTo(x, y);
+        layer.ctx.arc(x, y, r, CCWAngle, CWAngle);
+        if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
+        layer.ctx.restore();
+    }
+
+    drawArc(layer, obj, option = {}) {
+        var x = floor(obj.pos.x);
+        var y = floor(obj.pos.y);
+        var r = floor(obj.rad);
+        var CCWAngle = obj.CCWAngle;
+        var CWAngle = obj.CWAngle;
+        var color = option.color || obj.color || Color.random();
+
+        layer.ctx.save();
+        layer.ctx.fillStyle = color.RGBA();
+        layer.ctx.strokeStyle = color.RGBA();
+
+        layer.ctx.beginPath();
+        layer.ctx.arc(x, y, r, CCWAngle, CWAngle, true);
         if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
@@ -251,6 +307,7 @@ class Visualizer {
     }
 
     drawPolygon(layer, points, option = {}) {
+        if (points.length === 0) { return }
         var color = option.color || Color.random();
         var stroke = option.stroke ? option.stroke : false;
 
@@ -263,7 +320,7 @@ class Visualizer {
         points.forEach(p => { layer.ctx.lineTo(floor(p.x), floor(p.y)); });
         layer.ctx.closePath();
         layer.ctx.stroke();
-        if (stroke) { layer.ctx.fill(); }
+        if (!stroke) { layer.ctx.fill(); }
         layer.ctx.restore();
     }
 

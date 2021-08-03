@@ -34,13 +34,20 @@ class Shadow {
     }
 
     addFunc(name, func, arg) {
-        this.groupsFunc.get(name).push({ "func": func, "arg": arg || [] });
+        var uid = UID.get();
+        this.groupsFunc.get(name).set(uid, { "func": func, "arg": arg || [] });
+        return uid
+    }
+
+    removeFunc(name, uid) {
+        var group = this.groupsFunc.get(name);
+        if (!group.delete(uid)) { console.warn("Fail to remove func;", uid, group); }
     }
 
     addGroup(name, option) {
         this.groups.set(name, new Map());
         this.groupsInfo.set(name, option ? option : { "wallReset": true, "funcReset": false });
-        this.groupsFunc.set(name, []);
+        this.groupsFunc.set(name, new Map());
     }
 
     findGroup(name) {
@@ -62,7 +69,7 @@ class Shadow {
                 this.resetGroup(name, group);
                 funcs.forEach((input) => { input.func.bind(this)(group, mover, ...input.arg); })
             }
-            if (info.funcReset) { this.groupsFunc.set(name, []); }
+            if (info.funcReset) { this.groupsFunc.set(name, new Map()); }
         });
         var segments = [];
         this.groups.forEach(group => {
@@ -191,7 +198,7 @@ class Shadow {
         }
         // Sort intersects by angle
         intersects.sort(function(a, b) { return a.angle - b.angle; });
-        var vertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));     
+        var vertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));
         vertices = this.optimizeVertices(vertices);
 
         // Visualizer.addFunc("one-shot", function(layer, points) { this.drawPolygon(layer, points, { "color": Color.Cyan }); }, [vertices]);
