@@ -3,6 +3,10 @@ class ObjectSystem {
         this.objects = new Map();
     }
 
+    reset() {
+        this.objects = new Map();
+    }
+
     add(obj) {
         obj.type.forEach(type => {
             if (this.objects.has(type)) {

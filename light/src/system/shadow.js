@@ -4,6 +4,10 @@ import { OrthogonalVector } from "../util/vector.js";
 
 class Shadow {
     constructor() {
+        this.activate();
+    }
+
+    activate() {
         this.groups = new Map(); // Custom offscreencanvas for better performance
         this.groupsFunc = new Map();
         this.groupsInfo = new Map();
@@ -14,6 +18,8 @@ class Shadow {
         this.addGroup("dynamic");
         this.addGroup("one-shot", { "wallReset": true, "funcReset": true });
     }
+
+    reset() { this.activate(); }
 
     addWalls(name, walls) {
         var uids = [];

@@ -7,27 +7,27 @@ import { InputManager } from "../util/inputManager.js";
 import { Polygon } from "../util/polygon.js";
 
 export class MovableObject extends GameObject {
-    constructor(x, y, id, input) {
+    constructor(x, y, id, option) {
         super(x, y);
-        this.input = input || new InputManager();
+        this.input = option.input || new InputManager();
         this.id = id;
         this.type.push("MovableObject");
-        this.color = Color.Gray;
+        this.color = option.color || Color.Gray;
 
         // Kinematics
-        this.mass = 1;
-        this.friction = 0.001;
-        this.movingForceMag = 1000;
+        this.mass = option.mass || 1;
+        this.friction = option.friction || 0.001;
+        this.movingForceMag = option.movingForceMag || 1000;
 
         // External Input
-        this.movingKey = {
+        this.movingKey = option.movingKey || {
             "KeyW": { x: 0, y: -1 },
             "KeyA": { x: -1, y: 0 },
             "KeyS": { x: 0, y: 1 },
             "KeyD": { x: 1, y: 0 }
         }
 
-        this.visibleRange = 500;
+        this.visibleRange = option.visibleRange || 500;
         this.visibleArea = new Polygon();
         this.visibleEdges = [];
         this.input.activate();

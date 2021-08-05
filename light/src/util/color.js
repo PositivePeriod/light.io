@@ -9,19 +9,25 @@ export class Color {
     // RGB is actually sRGB
     // https://www.w3.org/TR/css-color-3/#hsl-color
     // https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
-    // https://en.wikipedia.org/wiki/HSL_and_HSV#Formal_derivation
+    // https://en.wikipedia.org/wiki/HSL_and_HSV#Formal_derivation 
+    static nameList = new Map();
 
-    static White = new Color("hex", "#FFFFFF").setName("White");
-    static Gray = new Color("hex", "#888888").setName("Gray");
-    static Black = new Color("hex", "#000000").setName("Black");
+    // Useful references
+    // https://www.color-name.com/
+    // https://htmlcolorcodes.com/color-names/
+    static White = new Color("hex", "#FFFFFF").addName("White");
+    static LightGray = new Color("hex", "#D3D3D3").addName("LightGray");
+    static Gray = new Color("hex", "#969892").addName("Gray");
+    static DarkGray = new Color("hex", "#696969").addName("DarkGray");
+    static Black = new Color("hex", "#000000").addName("Black");
 
-    static Red = new Color("hex", "#F44336").setName("Red");
-    static Green = new Color("hex", "#4CAF50").setName("Green");
-    static Blue = new Color("hex", "#2196F3").setName("Blue");
+    static Red = new Color("hex", "#F44336").addName("Red");
+    static Green = new Color("hex", "#4CAF50").addName("Green");
+    static Blue = new Color("hex", "#2196F3").addName("Blue");
 
-    static Yellow = new Color("hex", "#F7C475").setName("Yellow");
-    static Magenta = new Color("hex", "#F5B2F6").setName("Magenta");
-    static Cyan = new Color("hex", "#63DEF7").setName("Cyan");
+    static Yellow = new Color("hex", "#F7C475").addName("Yellow");
+    static Magenta = new Color("hex", "#F5B2F6").addName("Magenta");
+    static Cyan = new Color("hex", "#63DEF7").addName("Cyan");
 
     static random() {
         var color = "#" + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, "0");
@@ -151,9 +157,14 @@ export class Color {
         }
     }
 
-    setName(name) {
+    addName(name) {
         this.name = name;
+        Color.nameList.set(name, this);
         return this
+    }
+
+    static findName(name) {
+        return this.nameList.has(name) ? this.nameList.get(name) : this.random()
     }
 
     setAlpha(alpha) {

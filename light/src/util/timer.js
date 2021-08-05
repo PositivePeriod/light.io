@@ -1,3 +1,4 @@
+// TODO erase since never used
 export class Timer {
     constructor() {
         this.time = Date.now();

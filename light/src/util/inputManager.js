@@ -21,6 +21,11 @@ export class InputManager {
         this.keyboard.deactivate();
         this.mouse.deactivate();
     }
+
+    reset() {
+        this.deactivate();
+        this.activate();
+    }
 }
 
 export class KeyboardManager {

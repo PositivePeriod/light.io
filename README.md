@@ -18,4 +18,11 @@ Panel 전체로 하기...
 서로 만나는 선들 있으면 사전에 처리하기
 
 polygon 최적화 -> edge 얻어내기 / 직선 뿐만 아니라 호도 얻어내기
- 
+
+Game 판 크기 달라져도 움직이는 절대 거리 기준 계산이라서 훨씬 빨리 움직일 수 있음 - grid 기준 좌표계 다시 설정? - 시야 바꿀 때도 도움될지도
+
+Visualizer에서 panel 보이는 부분만 보이게 하는 것처럼 lamp 넣어서 광원 효과 넣기
+light.js 같은 거 필요한가? - shadow.js 수정하면 될 듯
+
+https://playcanvas.com/#!
+https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API

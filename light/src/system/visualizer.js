@@ -1,17 +1,17 @@
 import { Game } from "../game.js";
 import { Color } from "../util/color.js";
-import { Timer } from "../util/timer.js";
 import { UID } from "../util/uid.js";
 import { ObjectSystem } from "./objectSystem.js";
 
 // https://developer.mozilla.org/ko/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
 
+// Preprocess
 function floor(x) { return x }
 
 class Visualizer {
-    constructor() {
-        this.timer = new Timer();
+    constructor() {}
 
+    activate() {
         this.layers = new Map(); // Custom offscreencanvas for better performance
         this.layersFunc = new Map();
         this.layersInfo = new Map();
@@ -32,6 +32,12 @@ class Visualizer {
         this.resize();
     }
 
+    reset() {
+        window.removeEventListener("resize", this.resize.bind(this));
+        this.master.canvas.remove();
+        this.activate();
+    }
+
     initMasterLayer() {
         var canvas = document.createElement("canvas");
         document.body.appendChild(canvas);
@@ -39,10 +45,18 @@ class Visualizer {
         this.master = { "canvas": canvas, "ctx": ctx };
     }
 
+    addMultiShotFunc(func, arg, time) {
+        // time in second
+        var lastTurn = Game.turn + time * Game.fps;
+        var dTurn = time * Game.fps;
+        arg.splice(0, 0, lastTurn, dTurn);
+        return this.addFunc("multi-shot", func, arg);
+    }
+
     addFunc(name, func, arg) {
         var uid = UID.get();
         this.layersFunc.get(name).set(uid, { "func": func, "arg": arg || [] });
-        if (!this.layersInfo.get(name).drawReset) { this.initDraw(); }
+        this.drawReset(name);
         return uid
     }
 
@@ -50,7 +64,7 @@ class Visualizer {
         if (!this.layersFunc.get(name).delete(uid)) {
             console.warn("Fail to remove func;", uid);
         }
-        this.initDraw();
+        this.drawReset(name);
     }
 
     addLayer(name, option) {
@@ -84,7 +98,7 @@ class Visualizer {
             layer.canvas.height = this.stageHeight * this.pixelRatio;
             layer.ctx.scale(this.pixelRatio, this.pixelRatio);
         })
-        this.initDraw();
+        this.drawReset(); // TODO is it right?
     }
 
     getGrid(mapWidth, mapHeight) {
@@ -94,21 +108,26 @@ class Visualizer {
         return { "size": size, "startX": startX, "startY": startY }
     }
 
-    initDraw() {
-        this.resetLayer("master", this.master);
-        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot", "multi-shot"].forEach(name => {
-            var layer = this.findLayer(name);
-            var funcs = this.layersFunc.get(name);
-            this.resetLayer(name, layer);
-            funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
-            this.master.ctx.drawImage(layer.canvas, 0, 0);
+    drawReset(name) {
+        var layers = name ? [name] : Array.from(this.layers.keys());
+        layers.forEach(name => {
+            if (!this.layersInfo.get(name).drawReset) {
+                var layer = this.findLayer(name);
+                var funcs = this.layersFunc.get(name);
+                this.resetLayer(name, layer);
+                funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
+            }
         });
     }
 
     draw() {
-        // this.initDraw(); return;
         this.resetLayer("master", this.master);
-        ["visibleArea", "static", "visibleEdge", "panel", "mover", "one-shot", "multi-shot"].forEach(name => {
+        this.master.ctx.save();
+        this.master.ctx.fillStyle = "black";
+        this.master.ctx.fillRect(0, 0, this.master.canvas.width, this.master.canvas.height);
+        this.master.ctx.restore();
+        ['visibleArea', 'static', 'visibleEdge', 'panel', 'mover', 'one-shot', 'multi-shot'].forEach(name => {
+        // Array.from(this.layers.keys()).forEach(name => {
             var layer = this.findLayer(name);
             var info = this.layersInfo.get(name);
             var funcs = this.layersFunc.get(name);
@@ -136,6 +155,13 @@ class Visualizer {
                         layer.ctx.drawImage(pseudoLayer.canvas, 0, 0);
                         layer.ctx.restore();
                         break;
+                    case "multi-shot":
+                        funcs.forEach(input => {
+                            var ratio = 1 - (input.arg[0] - Game.turn) / input.arg[1];
+                            var newArg = input.arg.slice(2);
+                            input.func.bind(this)(layer, ratio, ...newArg);
+                        })
+                        break;
                     default:
                         funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
                         break;
@@ -143,10 +169,10 @@ class Visualizer {
             }
             if (info.funcReset) {
                 switch (name) {
-                    case "multishot":
+                    case "multi-shot":
                         var nextFunc = new Map();
-                        this.layersFunc.forEach((input, index) => {
-                            if (input.arg[0] > Game.turn) { nextFunc.set(index, input); }
+                        this.layersFunc.get(name).forEach((input, index) => {
+                            if (input.arg && input.arg[0] > Game.turn) { nextFunc.set(index, input); }
                         });
                         this.layersFunc.set(name, nextFunc);
                         break;

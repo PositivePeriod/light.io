@@ -123,6 +123,45 @@ export class NegativePanel extends Panel {
     }
 }
 
+export class ButtonPanel extends Panel {
+    constructor(x, y, color) {
+        super(x, y);
+        this.type.push("ButtonPanel");
+
+        this.onColor = color;
+        this.passable = true;
+        this.wasCollided = false;
+        this.on = false;
+    }
+
+    update() {
+        super.update();
+        var beCollided = ObjectSystem.find("MovableObject").some(mover => mover.isCollidedWith(this));
+        if (beCollided && !this.wasCollided) { this.on = !this.on; }
+        this.color = this.on ? this.onColor : Color.Gray;
+        this.wasCollided = beCollided;
+    }
+
+    draw() {
+        this.drawFuncUid = Visualizer.addFunc("panel", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
+    }
+}
+
+export class StartPanel extends ButtonPanel {
+    constructor(x, y, func) {
+        super(x, y, Color.Gray);
+        this.type.push("StartPanel");
+
+        this.func = func;
+    }
+
+    update() {
+        super.update();
+        var beCollided = ObjectSystem.find("MovableObject").some(mover => mover.isCollidedWith(this));
+        if (beCollided) { this.func(); }
+    }
+}
+
 export class UncertainPanel extends Panel {
     constructor(x, y) {
         super(x, y);
@@ -172,7 +211,7 @@ export class UncertainPanel extends Panel {
                 break;
         }
         this.state = state;
-        Visualizer.initDraw();
+        Visualizer.drawReset(); // TODO?
     }
 
     update() {
@@ -184,40 +223,43 @@ export class UncertainPanel extends Panel {
             } else {
                 // if (this.pseudoObject !== null) {
                 //     this.pseudoObject.color = Color.Blue;
-                //     Visualizer.initDraw();
+                //     Visualizer.drawReset();
                 // }
             }
         } else { // shown
             // if (this.pseudoObject !== null) {
             //     this.pseudoObject.color = Color.Red;
-            //     Visualizer.initDraw();
+            //     Visualizer.drawReset();
             // }
             this.alreadyWatched = true;
         }
     }
 }
 
-export class TimeAttackPanel extends Panel {
+export class TimerPanel extends Panel {
     static lastNumber = 3;
-    constructor(x, y) {
+    constructor(x, y, color) {
         super(x, y);
-        this.type.push("TimeAttackPanel");
+        this.type.push("TimerPanel");
 
         this.possibility = 0.2;
         this.alreadyWatched = false;
 
         this.drawFuncUid = null;
-        this.blastTime = 15;
+        this.blastTime = 10;
         this.blastTurn = null;
         this.bombColor = null;
 
         // this.colorList = [Color.White, Color.Black, Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Magenta, Color.Cyan];
-        this.colorList = [Color.Red, Color.Blue, Color.Magenta];
+        // this.colorList = [Color.Red, Color.Blue, Color.Magenta];
+        this.colorList = color;
     }
 
     draw() {}
 
     addBomb(turn) {
+        if (TimerPanel.lastNumber <= 0) { return }
+        TimerPanel.lastNumber--;
         this.blastTurn = turn + Game.fps * this.blastTime;
         this.bombColor = [
             this.colorList[Math.floor(Math.random() * this.colorList.length)],
@@ -244,7 +286,6 @@ export class TimeAttackPanel extends Panel {
             }
         }
         this.drawFuncUid = Visualizer.addFunc("panel", func, [this]);
-        TimeAttackPanel.lastNumber--;
     }
 
     removeBomb() {
@@ -254,7 +295,7 @@ export class TimeAttackPanel extends Panel {
             this.blastTurn = null;
             this.bombColor = null;
             Game.score += 1;
-            TimeAttackPanel.lastNumber++;
+            TimerPanel.lastNumber++;
         }
     }
 
@@ -262,8 +303,11 @@ export class TimeAttackPanel extends Panel {
         Visualizer.removeFunc("panel", this.drawFuncUid);
         this.blastTurn = null;
         this.bombColor = null;
-        console.log(Game.score);
-        Visualizer.addFunc("one-shot", function(layer, obj) { this.drawCircle(layer, { "pos": obj.pos, "rad": obj.rad, "color": Color.random() }); }, [this]);
+        Visualizer.addMultiShotFunc(function(layer, ratio, obj) {
+            if(ratio > 1) {console.trace();}
+            this.drawCircle(layer, { "pos": obj.pos, "rad": obj.rad + ratio * 100, "color": Color.White });
+        }, [this], 5);
+        alert(`Time: ${(Game.turn/Game.fps).toFixed(2)}, Score:${Game.score}`);
     }
 
     update(dt, turn) {

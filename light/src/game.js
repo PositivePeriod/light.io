@@ -1,40 +1,80 @@
-import { Visualizer } from "./system/visualizer.js";
-import { InputManager } from "./util/inputManager.js";
-import { MovableObject } from "./entity/movableObject.js";
-import { RigidBackground } from "./entity/mapObject/rigidBg.js";
 import { Angle, OrthogonalVector, PolarVector } from "./util/vector.js";
 import { VisibilitySegment } from "./util/line.js";
-import { ObjectSystem } from "./system/objectSystem.js"
-
-import { mapData } from "./data/map-1.js"
-import { NegativePanel, PositivePanel, TimeAttackPanel, UncertainPanel } from "./entity/mapObject/panel.js";
+import { InputManager } from "./util/inputManager.js";
 import { Color } from "./util/color.js";
+
+import { Visualizer } from "./system/visualizer.js";
+import { ObjectSystem } from "./system/objectSystem.js"
 import { Shadow } from "./system/shadow.js";
+
+import { mapData as mapIntro } from "./data/mapIntro.js"
+import { mapData as mapMain } from "./data/mapMain2.js"
+
 import { BouncyBackground } from "./entity/mapObject/bouncyBg.js";
 import { MovingBackground } from "./entity/mapObject/movingBg.js";
+import { ButtonPanel, NegativePanel, PositivePanel, StartPanel, TimerPanel, UncertainPanel } from "./entity/mapObject/panel.js";
+import { RigidBackground } from "./entity/mapObject/rigidBg.js";
+import { MovableObject } from "./entity/movableObject.js";
+
+var object = {
+    "RB": RigidBackground,
+    "BB": BouncyBackground,
+    "MB": MovingBackground,
+
+    "MO": MovableObject,
+
+    "PP": PositivePanel,
+    "NP": NegativePanel,
+    "UP": UncertainPanel,
+    "TP": TimerPanel,
+    "BP": ButtonPanel,
+    "SP": StartPanel
+};
+
+export const OBJECT = Object.freeze(new Map(Object.entries(object)));
+
+
 
 export class Game {
-    static fps = 20;
+    // static fps = 10;
+    static fps = 30;
     static dt = 1 / this.fps;
     static score = 0;
 
     constructor() {
-        this.input = new InputManager();
-        this.input.keyboard.listen("KeyG", this.addGameObject.bind(this));
-        this.input.activate();
+        this.resetData = new Map();
 
-        this.initGameObjects();
-        // this.initShadowNVisualizer();
-        Visualizer.initDraw();
+        this.input = new InputManager();
+        // this.input.keyboard.listen("KeyG", this.addGameObject.bind(this));
+        this.input.activate();
+        Visualizer.activate();
+
+        this.initGameObjects(mapIntro);
+        Visualizer.drawReset();
 
         setInterval(this.update.bind(this), Math.round(1000 / Game.fps));
     }
-    initGameObjects() {
+
+    reset() {
+        ObjectSystem.reset();
+        Shadow.reset();
+        Visualizer.reset();
+        Game.score = 0;
+        Game.time = 0;
+        Game.maxTime = 0;
+        Game.averageTime = 0;
+        Game.turn = 0;
+
+        this.initGameObjects(mapMain);
+    }
+
+    initGameObjects(mapData) {
         this.grid = Visualizer.getGrid(mapData.width, mapData.height);
 
-        this.moverColor = [Color.Red, Color.Blue, Color.Green];
-        this.panelType = { "P": PositivePanel, "N": NegativePanel, "U": UncertainPanel, "T": TimeAttackPanel };
+        this.moverColor = [Color.Red, Color.Green, Color.Blue];
+        this.panelType = { "P": PositivePanel, "N": NegativePanel, "U": UncertainPanel, "T": TimerPanel, "t": ButtonPanel, "s": StartPanel };
         this.moverCounter = 0;
+        this.panelCounter = 0;
         for (let x = 0; x < mapData.width; x++) {
             for (let y = 0; y < mapData.height; y++) {
                 var blockType = mapData.map[y][x].slice(0, 1);
@@ -67,9 +107,16 @@ export class Game {
                         obj.makeShape("Circle", { "rad": this.grid.size * 0.1, "height": this.grid.size, "color": Color.Black });
                         break;
                     case "M": // Mover
-                        obj = new MovableObject(posX, posY, this.moverCounter);
-                        var color = this.moverColor[this.moverCounter % this.moverColor.length]
-                        obj.makeShape("Circle", { "rad": this.grid.size * 0.2, "color": color });
+                        var option = mapData.object[mapData.map[y][x]] || {};
+                        if (option.color) {
+                            if (mapData.name === "mapMain") {
+                                if (!this.resetData.get('PossibleMoverColor').includes(option.color)) { break; }
+                            }
+                            option.color = Color.findName(option.color);
+                        }
+                        obj = new MovableObject(posX, posY, this.moverCounter, option);
+                        // var color = this.moverColor[this.moverCounter % this.moverColor.length]
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.2 });
                         this.input.keyboard.listen(`Digit${++this.moverCounter}`, obj.input.toggle.bind(obj.input));
 
                         // obj.input.deactivate();
@@ -79,15 +126,32 @@ export class Game {
                         //     })
                         // }
                         // this.input.keyboard.listen(`Digit${++this.moverCounter}`, func.bind(obj));
-                        if (obj.id === 1) {
-                            obj.movingKey = {
-                                "KeyI": { x: 0, y: -1 },
-                                "KeyJ": { x: -1, y: 0 },
-                                "KeyK": { x: 0, y: 1 },
-                                "KeyL": { x: 1, y: 0 }
-                            }
+                        switch (obj.id) {
+                            case 0:
+                                obj.movingKey = {
+                                    "KeyW": { x: 0, y: -1 },
+                                    "KeyA": { x: -1, y: 0 },
+                                    "KeyS": { x: 0, y: 1 },
+                                    "KeyD": { x: 1, y: 0 }
+                                }
+                                break;
+                            case 1:
+                                obj.movingKey = {
+                                    "KeyT": { x: 0, y: -1 },
+                                    "KeyF": { x: -1, y: 0 },
+                                    "KeyG": { x: 0, y: 1 },
+                                    "KeyH": { x: 1, y: 0 }
+                                }
+                                break;
+                            case 2:
+                                obj.movingKey = {
+                                    "KeyI": { x: 0, y: -1 },
+                                    "KeyJ": { x: -1, y: 0 },
+                                    "KeyK": { x: 0, y: 1 },
+                                    "KeyL": { x: 1, y: 0 }
+                                }
+                                break;
                         }
-
                         break;
                     case "P": // PositivePanel
                     case "N": // NegativePanel
@@ -99,9 +163,44 @@ export class Game {
                         var size = this.grid.size;
                         obj.makeShape("Rect", { "width": size, "height": size });
                         break;
-                    case "T": // TimeAttackPanel
-                        obj = new this.panelType[blockType](posX, posY);
+                    case "T": // TimerPanel
+                        var a = this.resetData.get('PossibleMoverColor');
+                        var b;
+                        if (a.length === 1) {
+                            b = [Color.findName(a[0])];
+                        } else if (a.length === 2) {
+                            b = [Color.findName(a[0]), Color.findName(a[1])];
+                            b.push(Color.add(b));
+                        } else {
+                            b = [Color.White, Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Magenta, Color.Cyan];
+                        }
+                        obj = new this.panelType[blockType](posX, posY, b);
                         obj.makeShape("Circle", { "rad": this.grid.size * 0.2 });
+                        break;
+                    case "t": // ButtonPanel
+                        var color = this.moverColor[this.panelCounter++ % this.moverColor.length];
+                        obj = new this.panelType[blockType](posX, posY, color);
+                        var size = this.grid.size * 0.5;
+                        obj.makeShape("Rect", { "width": size, "height": size });
+                        this.resetData.set('ButtonPanel' + color.name, obj);
+                        break;
+                    case "s": // StartPanel
+                        var func = function() {
+                            var colorString = ['Red', 'Green', 'Blue'];
+                            this.resetData.set('PossibleMoverColor', []);
+                            var flag = false;
+                            colorString.forEach(color => {
+                                var beChoosed = this.resetData.get('ButtonPanel' + color).on;
+                                if (beChoosed) {
+                                    this.resetData.get('PossibleMoverColor').push(color);
+                                    flag = true;
+                                }
+                            })
+                            if (flag) { this.reset(); }
+                        }.bind(this);
+                        obj = new this.panelType[blockType](posX, posY, func);
+                        var size = this.grid.size * 0.5;
+                        obj.makeShape("Rect", { "width": size, "height": size });
                         break;
                     case "C": // Circle
                         obj = new RigidBackground(posX, posY);
@@ -263,7 +362,7 @@ export class Game {
                 }
             }
             obj.draw();
-            Visualizer.initDraw();
+            Visualizer.drawReset();
         }
     }
 
@@ -281,7 +380,7 @@ export class Game {
         });
         Visualizer.draw();
 
-        Game.checkFPS();
+        Game.checkFPS(true);
     }
 
     static checkFPS(log = false) {
