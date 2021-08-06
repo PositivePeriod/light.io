@@ -11,10 +11,15 @@ import { mapData as mapIntro } from "./data/mapIntro.js"
 import { mapData as mapMain } from "./data/mapMain2.js"
 
 import { BouncyBackground } from "./entity/mapObject/bouncyBg.js";
-import { MovingBackground } from "./entity/mapObject/movingBg.js";
-import { ButtonPanel, NegativePanel, PositivePanel, StartPanel, TimerPanel, UncertainPanel } from "./entity/mapObject/panel.js";
+import { MovingBackground, Particle } from "./entity/mapObject/movingBg.js";
+import { Panel } from "./entity/mapObject/panel/panel.js";
 import { RigidBackground } from "./entity/mapObject/rigidBg.js";
 import { MovableObject } from "./entity/movableObject.js";
+import { PositivePanel } from "./entity/mapObject/panel/positivePanel.js";
+import { NegativePanel } from "./entity/mapObject/panel/negativePanel.js";
+import { UncertainPanel } from "./entity/mapObject/panel/uncertainPanel.js";
+import { TimerPanel } from "./entity/mapObject/panel/timerPanel.js";
+import { ButtonPanel, StartPanel } from "./entity/mapObject/panel/buttonPanel.js";
 
 var object = {
     "RB": RigidBackground,
@@ -104,7 +109,14 @@ export class Game {
                         break;
                     case "c": // MovingBg
                         obj = new MovingBackground(posX, posY, 150000);
-                        obj.makeShape("Circle", { "rad": this.grid.size * 0.1, "height": this.grid.size, "color": Color.Black });
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.1, "color": Color.Black });
+                        break;
+                    case "j": // Particle
+                    case "k":
+                    case "l":
+                        var particleType = { "j": 1, "k": 2, "l": 3 };
+                        obj = new Particle(posX, posY, particleType[blockType]);
+                        obj.makeShape("Circle", { "rad": this.grid.size * 0.1, "color": Color.Black });
                         break;
                     case "M": // Mover
                         var option = mapData.object[mapData.map[y][x]] || {};
@@ -305,6 +317,13 @@ export class Game {
                 obj = new this.panelType[blockType](posX, posY);
                 obj.makeShape("Rect", { "width": this.grid.size * 0.2, "height": this.grid.size * 0.2 });
                 break;
+            case "j": // Particle
+            case "k":
+            case "l":
+                var particleType = { "j": 1, "k": 2, "l": 3 };
+                obj = new Particle(posX, posY, particleType[blockType]);
+                obj.makeShape("Circle", { "rad": this.grid.size * 0.1, "color": Color.Black });
+                break;
             case "C": // Circle
                 obj = new RigidBackground(posX, posY);
                 obj.makeShape("Circle", { "rad": this.grid.size * 0.5, "color": Color.Black });
@@ -329,15 +348,29 @@ export class Game {
                         var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
                         var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
                         var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
-                        Shadow.addWalls("static", [
-                            new VisibilitySegment(p1, p3),
-                            new VisibilitySegment(p1, p2),
-                            new VisibilitySegment(p3, p4),
-                            new VisibilitySegment(p2, p4)
-                        ]);
+                        if (obj instanceof MovingBackground) {
+                            var func = function(group, mover, obj) {
+                                var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
+                                var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
+                                var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
+                                var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
+                                this.addWalls("dynamic", [
+                                    new VisibilitySegment(p1, p3),
+                                    new VisibilitySegment(p1, p2),
+                                    new VisibilitySegment(p3, p4),
+                                    new VisibilitySegment(p2, p4)
+                                ]);
+                            }
+                            Shadow.addFunc("dynamic", func, [obj]);
+                        } else {
+                            Shadow.addWalls("static", [
+                                new VisibilitySegment(p1, p3), new VisibilitySegment(p1, p2),
+                                new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)
+                            ]);
+                        }
                         break;
                     case "Circle":
-                        var func = (group, mover, obj) => {
+                        var func = function(group, mover, obj) {
                             var dPos = mover.pos.minus(obj.pos);
                             var angle = Math.acos(obj.rad / dPos.r);
                             var p1 = obj.pos.add(new PolarVector(obj.rad, dPos.theta + angle));
@@ -353,7 +386,7 @@ export class Game {
                                 line.setProp(mover, "CW", angle1);
                             }
                             line.obj = obj;
-                            group.push(line);
+                            this.addWalls("dynamic", [line]);
                         }
                         Shadow.addFunc("dynamic", func, [obj]);
                         break;
@@ -361,8 +394,7 @@ export class Game {
                         break;
                 }
             }
-            obj.draw();
-            Visualizer.drawReset();
+            obj.draw(); // TODO
         }
     }
 
@@ -380,7 +412,7 @@ export class Game {
         });
         Visualizer.draw();
 
-        Game.checkFPS(true);
+        Game.checkFPS();
     }
 
     static checkFPS(log = false) {

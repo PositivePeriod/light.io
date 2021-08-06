@@ -1,7 +1,6 @@
 import { Game } from "../game.js";
 import { Color } from "../util/color.js";
 import { UID } from "../util/uid.js";
-import { ObjectSystem } from "./objectSystem.js";
 
 // https://developer.mozilla.org/ko/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
 
@@ -17,9 +16,7 @@ class Visualizer {
         this.layersInfo = new Map();
 
         this.initMasterLayer();
-        // static
         this.addLayer("static", { "drawReset": false, "funcReset": false });
-        // dynamic
         this.addLayer("visibleArea");
         this.addLayer("visibleEdge");
         this.addLayer("panel");
@@ -27,7 +24,6 @@ class Visualizer {
         this.addLayer("one-shot", { "drawReset": true, "funcReset": true });
         this.addLayer("multi-shot", { "drawReset": true, "funcReset": true });
 
-        this.pixelRatio = window.devicePixelRatio > 1 ? 2 : 1;
         window.addEventListener("resize", this.resize.bind(this));
         this.resize();
     }
@@ -88,15 +84,17 @@ class Visualizer {
     }
 
     resize() {
-        this.stageWidth = document.body.clientWidth;
-        this.stageHeight = document.body.clientHeight;
-        this.master.canvas.width = this.stageWidth * this.pixelRatio;
-        this.master.canvas.height = this.stageHeight * this.pixelRatio;
-        this.master.ctx.scale(this.pixelRatio, this.pixelRatio);
+        // var pixelRatio = window.devicePixelRatio;
+        var pixelRatio = 1;
+        this.stageWidth = window.innerWidth * pixelRatio;
+        this.stageHeight = window.innerHeight * pixelRatio;
+        this.master.canvas.width = this.stageWidth;
+        this.master.canvas.height = this.stageHeight;
+        this.master.ctx.scale(pixelRatio, pixelRatio);
         this.layers.forEach(layer => {
-            layer.canvas.width = this.stageWidth * this.pixelRatio;
-            layer.canvas.height = this.stageHeight * this.pixelRatio;
-            layer.ctx.scale(this.pixelRatio, this.pixelRatio);
+            layer.canvas.width = this.stageWidth;
+            layer.canvas.height = this.stageHeight;
+            layer.ctx.scale(pixelRatio, pixelRatio);
         })
         this.drawReset(); // TODO is it right?
     }
@@ -127,7 +125,7 @@ class Visualizer {
         this.master.ctx.fillRect(0, 0, this.master.canvas.width, this.master.canvas.height);
         this.master.ctx.restore();
         ['visibleArea', 'static', 'visibleEdge', 'panel', 'mover', 'one-shot', 'multi-shot'].forEach(name => {
-        // Array.from(this.layers.keys()).forEach(name => {
+            // Array.from(this.layers.keys()).forEach(name => {
             var layer = this.findLayer(name);
             var info = this.layersInfo.get(name);
             var funcs = this.layersFunc.get(name);
@@ -140,21 +138,21 @@ class Visualizer {
                         funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
                         layer.ctx.restore();
                         break;
-                    case "panel":
-                        var canvas = document.createElement("canvas");
-                        var ctx = canvas.getContext("2d");
-                        var pseudoLayer = { "canvas": canvas, "ctx": ctx };
-                        pseudoLayer.canvas.width = this.stageWidth * this.pixelRatio;
-                        pseudoLayer.canvas.height = this.stageHeight * this.pixelRatio;
-                        pseudoLayer.ctx.scale(this.pixelRatio, this.pixelRatio);
-                        ObjectSystem.find("MovableObject").forEach(mover => { this.drawPolygon(pseudoLayer, mover.visibleArea.vertices, { "color": Color.Gray }); })
+                        // case "panel":
+                        //     var canvas = document.createElement("canvas");
+                        //     var ctx = canvas.getContext("2d");
+                        //     var pseudoLayer = { "canvas": canvas, "ctx": ctx };
+                        //     pseudoLayer.canvas.width = this.stageWidth * this.pixelRatio;
+                        //     pseudoLayer.canvas.height = this.stageHeight * this.pixelRatio;
+                        //     pseudoLayer.ctx.scale(this.pixelRatio, this.pixelRatio);
+                        //     ObjectSystem.find("MovableObject").forEach(mover => { this.drawPolygon(pseudoLayer, mover.visibleArea.vertices, { "color": Color.Gray }); })
 
-                        layer.ctx.save();
-                        funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
-                        layer.ctx.globalCompositeOperation = "destination-in";
-                        layer.ctx.drawImage(pseudoLayer.canvas, 0, 0);
-                        layer.ctx.restore();
-                        break;
+                        //     layer.ctx.save();
+                        //     funcs.forEach(input => { input.func.bind(this)(layer, ...input.arg); })
+                        //     layer.ctx.globalCompositeOperation = "destination-in";
+                        //     layer.ctx.drawImage(pseudoLayer.canvas, 0, 0);
+                        //     layer.ctx.restore();
+                        //     break;
                     case "multi-shot":
                         funcs.forEach(input => {
                             var ratio = 1 - (input.arg[0] - Game.turn) / input.arg[1];
@@ -353,7 +351,6 @@ class Visualizer {
     drawvisibleArea(layer, mover) {
         var polygon = mover.visibleArea;
         if (polygon.n === 0) { return }
-
         let gradient = layer.ctx.createRadialGradient(mover.pos.x, mover.pos.y, mover.rad, mover.pos.x, mover.pos.y, mover.visibleRange);
         var hsl = mover.color.hsl;
         gradient.addColorStop(0, `hsla(${hsl[0]}, ${hsl[1]*100}%, 40%, 1)`); // start

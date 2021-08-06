@@ -4,22 +4,22 @@ export const mapData = Object.freeze({
     "height": 11,
     "map": [
         ["B", "B", "B", "B", "B", "B", "B", "B", "B", "B", "B"],
-        ["B", "T", "T", "T", "T", "T", "T", "T", "T", "T", "B"],
-        ["B", "T", "b", "T", "T", "T", "T", "T", "b", "T", "B"],
-        ["B", "T", "T", "T", "b", "M2", "b", "T", "T", "T", "B"],
-        ["B", "T", "T", "b", "T", "T", "T", "b", "T", "T", "B"],
-        ["B", "T", "T", "M1", "T", "b", "T", "M3", "T", "T", "B"],
-        ["B", "T", "T", "b", "T", "T", "T", "b", "T", "T", "B"],
-        ["B", "T", "T", "T", "b", "T", "b", "T", "T", "T", "B"],
-        ["B", "T", "b", "T", "T", "T", "T", "T", "b", "T", "B"],
-        ["B", "T", "T", "T", "T", "T", "T", "T", "T", "T", "B"],
+        ["B", " ", " ", " ", " ", " ", " ", " ", " ", " ", "B"],
+        ["B", " ", "c", " ", " ", " ", " ", " ", "c", " ", "B"],
+        ["B", " ", " ", " ", "c", "M2", "c", " ", " ", " ", "B"],
+        ["B", " ", " ", "c", " ", " ", " ", "c", " ", " ", "B"],
+        ["B", " ", " ", "M1", " ", "c", " ", "M3", " ", " ", "B"],
+        ["B", " ", " ", "c", " ", " ", " ", "c", " ", " ", "B"],
+        ["B", " ", " ", " ", "c", " ", "c", " ", " ", " ", "B"],
+        ["B", " ", "c", " ", " ", " ", " ", " ", "c", " ", "B"],
+        ["B", " ", " ", " ", " ", " ", " ", " ", " ", " ", "B"],
         ["B", "B", "B", "B", "B", "B", "B", "B", "B", "B", "B"]
 
     ],
     "object": {
         "M1": {
             "color": "Red",
-            "visibleRange": 500,
+            "visibleRange": 3000,
             "mass": 1,
             "friction": 0.001,
             "movingForceMag": 1000,
@@ -27,7 +27,7 @@ export const mapData = Object.freeze({
         },
         "M2": {
             "color": "Green",
-            "visibleRange": 500,
+            "visibleRange": 3000,
             "mass": 1,
             "friction": 0.001,
             "movingForceMag": 1000,
@@ -35,7 +35,7 @@ export const mapData = Object.freeze({
         },
         "M3": {
             "color": "Blue",
-            "visibleRange": 500,
+            "visibleRange": 3000,
             "mass": 1,
             "friction": 0.001,
             "movingForceMag": 1000,
