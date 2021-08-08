@@ -1,3 +1,10 @@
+function zeroGuard(num) {
+    if (num === 0) {
+        console.error('Impossible to divide by 0', num);
+        console.trace();
+    }
+}
+
 export class Vector {
     static rLimit = 1e-6;
     static thetaLimit = 1e-6;
@@ -10,14 +17,18 @@ export class Vector {
     }
 
     innerAngle(other) {
+        zeroGuard(this.r);
+        zeroGuard(other.r);
         return Math.acos(this.inner(other) / this.r / other.r)
     }
 
     scalarProjectTo(other) {
+        zeroGuard(other.r);
         return (this.x * other.x + this.y * other.y) / other.r;
     }
 
     vectorProjectTo(other) {
+        zeroGuard(other.r2);
         return other.multiply((this.x * other.x + this.y * other.y) / other.r2);
     }
 
@@ -44,12 +55,16 @@ export class Vector {
 
     same(other) { return this.minus(other).r < Vector.rLimit }
 
-    parallel(other) { return Math.abs((this.x * other.y - this.y * other.x)/this.r/other.r) < Vector.limit }
+    parallel(other) {
+        zeroGuard(this.r);
+        zeroGuard(other.r);
+        return Math.abs((this.x * other.y - this.y * other.x) / this.r / other.r) < Vector.limit
+    }
 
 }
 
 export class PolarVector extends Vector {
-    constructor(r=0, theta=0) {
+    constructor(r = 0, theta = 0) {
         super();
         this.r = r;
         this.theta = theta;
@@ -121,15 +136,11 @@ export class PolarVector extends Vector {
 }
 
 export class OrthogonalVector extends Vector {
-    constructor(x=0, y=0) {
+    constructor(x = 0, y = 0) {
         super();
         this.x = x;
         this.y = y;
         this.checkZero();
-    }
-
-    represent() {
-        return { "x": this.x, "y": this.y }
     }
 
     get r() {

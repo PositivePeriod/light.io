@@ -36,10 +36,10 @@ export class UncertainPanel extends Panel {
                 var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
                 var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
                 obj.edges = [
-                    new VisibilitySegment(p1, p3),
-                    new VisibilitySegment(p1, p2),
-                    new VisibilitySegment(p3, p4),
-                    new VisibilitySegment(p2, p4)
+                    new Line(p1, p3, false),
+                    new Line(p1, p2, false),
+                    new Line(p3, p4, false),
+                    new Line(p2, p4, false)
                 ]
                 obj.wallUIDs = Shadow.addWalls("static", obj.edges);
                 obj.draw();

@@ -1,6 +1,6 @@
 export const mapData = Object.freeze({
     "name": "mapLobby",
-    "width": ,
+    "width": 7,
     "height": 7,
     "map": [
         ["R", "R", "R", "R", "R", "R", "R"],

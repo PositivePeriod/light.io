@@ -3,9 +3,11 @@ import { SHAPE } from "../util/constant.js";
 import { OrthogonalVector } from "../util/vector.js";
 import { Collision } from "../system/collision.js";
 import { Visualizer } from "../system/visualizer.js";
+import { UID } from "../util/uid.js";
 
 export class GameObject {
     constructor(x, y) {
+        this.id = UID.get();
         this.type = ["GameObject"];
 
         // Kinematics
@@ -24,13 +26,15 @@ export class GameObject {
 
     applyForce(force) { this.force.addBy(force.toOrthogonal()); }
 
-    setPos(x, y) { this.pos = new OrthogonalVector(x, y); }
-
     update(dt) {
         var accel = this.force.multiply(1 / this.mass);
         this.velocity.addBy(accel.multiply(dt));
         this.pos.addBy(this.velocity.multiply(dt));
         this.force = new OrthogonalVector();
+    }
+
+    getPhysicalWall() {
+
     }
 
     makeShape(shape, option) {
@@ -40,6 +44,7 @@ export class GameObject {
         })
         switch (shape) { // for roughCollide // Can be 2 but want to be sure
             case "Rect":
+
             case "Tri":
                 break;
             case "Circle":
@@ -53,7 +58,7 @@ export class GameObject {
                 break;
         }
         this.shape = shape;
-        if (option.x && option.y) { this.setPos(option.x, option.y); }
+        if (option.x && option.y) { this.pos = new OrthogonalVector(option.x , option.y); }
         if (option.color) { this.color = option.color; }
         if (shape === "Hex") {
             Object.defineProperty(this, "pseudoObjects", {
@@ -76,12 +81,5 @@ export class GameObject {
 
     isCollidedWith(other) {
         return Collision.isCollided(this, other);
-    }
-
-    represent() {
-        return {
-            "type": this.type[-1],
-            "pos": this.pos.represent()
-        }
     }
 }

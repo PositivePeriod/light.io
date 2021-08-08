@@ -8,7 +8,7 @@ export const mapData = Object.freeze({
         ["B", "T", "b", "T", "T", "T", "T", "T", "b", "T", "B"],
         ["B", "T", "T", "T", "b", "M2", "b", "T", "T", "T", "B"],
         ["B", "T", "T", "b", "T", "T", "T", "b", "T", "T", "B"],
-        ["B", "T", "T", "M1", "T", "b", "T", "M3", "T", "T", "B"],
+        ["B", "T", "T", "M1", "T", "C", "T", "M3", "T", "T", "B"],
         ["B", "T", "T", "b", "T", "T", "T", "b", "T", "T", "B"],
         ["B", "T", "T", "T", "b", "T", "b", "T", "T", "T", "B"],
         ["B", "T", "b", "T", "T", "T", "T", "T", "b", "T", "B"],
@@ -19,7 +19,7 @@ export const mapData = Object.freeze({
     "object": {
         "M1": {
             "color": "Red",
-            "visibleRange": 500,
+            "visibleRange": 5000,
             "mass": 1,
             "friction": 0.001,
             "movingForceMag": 1000,

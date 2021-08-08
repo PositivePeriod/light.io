@@ -115,12 +115,12 @@ export class MouseManager {
             case "mousedown":
                 this.downPos = { "x": x, "y": y };
                 this.isPressed = true;
-                if (this.mouseCallback.has(e.type)) { this.mouseCallback.get(e.type)(this.downX, this.downY); }
+                if (this.mouseCallback.has(e.type)) { this.mouseCallback.get(e.type)(this.downPos); }
                 break;
             case "mouseup":
                 this.upPos = { "x": x, "y": y };
                 this.isPressed = false;
-                if (this.mouseCallback.has(e.type)) { this.mouseCallback.get(e.type)(this.downX, this.downY, this.upX, this.upY); }
+                if (this.mouseCallback.has(e.type)) { this.mouseCallback.get(e.type)(this.downPos, this.upPos); }
                 break;
             case "click":
                 break;

@@ -13,13 +13,6 @@ export class Line {
         this.vector = this.p2.minus(this.p1);
     }
 
-    represent() {
-        return { "p1": this.p1.represent(), "p2": this.p2.represent() }
-    }
-
-    toInfinite() { this.infinite = true; return this }
-    toFinite() { this.infinite = false; return this }
-
     perpendicularToPoint(point) {
         var p = point.toOrthogonal();
         var d = p.minus(this.p1);
@@ -35,18 +28,20 @@ export class Line {
         if (this.infinite) { return Math.abs(d2) } else { return (d1 < 0 || this.vector.r < d1) ? Math.min(d.r, p.minus(this.p2).r) : Math.abs(d2) }
     }
 
-    intersectWith(other, infinite = false, strict = false) {
+    intersectWith(other, mustInfinite = false, strict = false, log=false) {
         // https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
         if (this.vector.parallel(other.vector)) {
             var v = other.p1.minus(this.p1);
+            if (v.r < 1e-6) { return true }
             if (this.vector.parallel(v)) {
                 // common line
-                var existInfinite = infinite || this.infinite || other.infinite;
+                var existInfinite = mustInfinite || this.infinite || other.infinite;
                 if (existInfinite) {
                     return true
                 } // Infinite many intersection
                 var projection = v.scalarProjectTo(this.vector);
                 var isSameDir = other.vector.scalarProjectTo(this.vector) > 0;
+                if (log) {console.log('intersectWith', projection, isSameDir);                }
                 if (isSameDir) {
                     return -other.vector.r < projection && projection < this.vector.r ? true : null
                 } else {
@@ -61,8 +56,8 @@ export class Line {
             var p4 = other.p2;
             const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
             const u = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / ((p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x));
-            if (!(infinite || this.infinite) && !(0 <= t && t <= 1)) { return null }
-            if (!(infinite || other.infinite) && !(0 <= u && u <= 1)) { return null }
+            if (!(mustInfinite || this.infinite) && !(0 <= t && t <= 1)) { return null }
+            if (!(mustInfinite || other.infinite) && !(0 <= u && u <= 1)) { return null }
             if (strict && (!(0 < t && t < 1) || !(0 < t && t < 1))) { return null }
             var p = p1.interpolate(p2, t);
             return p
@@ -72,138 +67,58 @@ export class Line {
     same(other) {
         return (this.p1.same(other.p1) && this.p2.same(other.p2)) || (this.p1.same(other.p2) && this.p2.same(other.p1))
     }
-
-    isCCWThan(point) {
-        // segment exists lefter than point
-        return this.p2.minus(point).inner(this.vector.normal()) < 0
-    }
 }
 
-export class VisibilitySegment extends Line {
-    constructor(p1, p2) {
+export class ShadowLine extends Line {
+    static typeList = ['line', 'arc'];
+
+    constructor(p1, p2, type, param) {
+        if (!ShadowLine.typeList.includes(type)) { console.error('Unknown Type for ShadowLine', type); }
+
         super(p1, p2, false);
-        this.prop = new Map();
-        this.p1.prop = new Map();
-        this.p2.prop = new Map();
-        this.p1.setProp = this.setProp.bind(this.p1);
-        this.p2.setProp = this.setProp.bind(this.p2);
-        this.p1.getProp = this.getProp.bind(this.p1);
-        this.p2.getProp = this.getProp.bind(this.p2);
+        this.type = type;
+        this.param = param || {};
     }
 
-    setProp(mover, prop, value) {
-        if (!this.prop.has(mover.id)) { this.prop.set(mover.id, {}); }
-        this.prop.get(mover.id)[prop] = value;
-    }
-
-    getProp(mover, prop) {
-        if (!this.prop.has(mover.id)) { this.prop.set(mover.id, {}); }
-        return this.prop.get(mover.id)[prop]
-    }
-
-    setMover(mover) {
-        var cTheta1 = this.p1.minus(mover.pos).theta;
-        var cTheta2 = this.p2.minus(mover.pos).theta;
-        this.p1.setProp(mover, "cTheta", cTheta1);
-        this.p2.setProp(mover, "cTheta", cTheta2);
-
-        var dAngle = cTheta2 - cTheta1;
-        // - 2 * Math. PI < dAngle < 2 * Math.PI
-        if (dAngle <= -Math.PI) { dAngle += 2 * Math.PI; }
-        if (dAngle > Math.PI) { dAngle -= 2 * Math.PI; }
-        // - Math.PI < dAngle <= Math.PI
-        this.p1.setProp(mover, "beginLine", dAngle > 0);
-        this.p2.setProp(mover, "beginLine", dAngle <= 0);
-    }
-
-    draw(layer, mover, visualizer, color) {
-        if (this.obj === undefined) {
-            var v1 = this.getProp(mover, "v1");
-            var v2 = this.getProp(mover, "v2");
-            layer.ctx.save();
-            layer.ctx.strokeStyle = color || mover.color.HEX();
-            layer.ctx.lineWidth = 2;
-            layer.ctx.beginPath();
-            layer.ctx.moveTo(v1.x, v1.y);
-            layer.ctx.lineTo(v2.x, v2.y);
-            layer.ctx.closePath();
-            layer.ctx.stroke();
-            layer.ctx.restore();
-        } else {
-            // Visualizer.drawCircle(Visualizer.findLayer("static"), { "pos": this.getProp(mover, "v1"), "rad": 1, });
-            // Visualizer.drawCircle(Visualizer.findLayer("static"), { "pos": this.getProp(mover, "v2"), "rad": 1, });
-
-            var v1 = this.getProp(mover, "v1").toOrthogonal();
-            var l1 = v1.minus(mover.pos);
-            var l2 = v1.minus(this.obj.pos);
-            var p1 = l2.minus(new PolarVector((this.obj.rad ** 2 - l2.r2) ** 0.5, l1.theta));
-
-            var v2 = this.getProp(mover, "v2").toOrthogonal();
-            var l1 = v2.minus(mover.pos);
-            var l2 = v2.minus(this.obj.pos);
-            var p2 = l2.minus(new PolarVector((this.obj.rad ** 2 - l2.r2) ** 0.5, l1.theta));
-
-
-            var pseudoObject = {
-                "pos": this.obj.pos,
-                "rad": this.obj.rad,
-                "CCWAngle": p1.theta,
-                "CWAngle": p2.theta,
-                "color": mover.color
-            };
-            visualizer.drawArc(layer, pseudoObject);
+    getPath() {
+        var path = new Path2D();
+        switch (this.type) {
+            case "line":
+                path.moveTo(this.p1.x, this.p1.y);
+                path.lineTo(this.p2.x, this.p2.y);
+                break;
+            case "arc":
+                path.arc(this.param.pos.x, this.param.pos.y, this.param.rad, this.param.startAngle, this.param.endAngle);
+                break;
         }
-    }
-
-    setVisibleRange(mover, angle1, angle2) {
-        var p1 = mover.pos.add(new PolarVector(1, angle1));
-        var p2 = mover.pos.add(new PolarVector(1, angle2));
-        var l1 = new Line(mover.pos, p1);
-        var l2 = new Line(mover.pos, p2);
-        var v1 = this.intersectWith(l1, true);
-        var v2 = this.intersectWith(l2, true);
-        v1.line = this;
-        v2.line = this;
-        this.setProp(mover, "v1", v1);
-        this.setProp(mover, "v2", v2);
+        return path
     }
 }
 
-export function segmentInFrontOf(s1, s2, relativePoint) {
-    // TODO hardcoding what about?
-    var limit = 1e-6;
-    const A1 = s1.isCCWThan(s2.p1.interpolate(s2.p2, limit));
-    const A2 = s1.isCCWThan(s2.p2.interpolate(s2.p1, limit));
-    const A3 = s1.isCCWThan(relativePoint);
+// https://mathworld.wolfram.com/Circle-LineIntersection.html
+export function CircleLineIntersection(circle, line) {
+    var p1 = line.p1.minus(circle.pos);
+    var p2 = p1.add(new PolarVector(1, line.vector.theta));
 
-    const B1 = s2.isCCWThan(s1.p1.interpolate(s1.p2, limit));
-    const B2 = s2.isCCWThan(s1.p2.interpolate(s1.p1, limit));
-    const B3 = s2.isCCWThan(relativePoint);
-    if (B1 === B2 && B2 !== B3) return true;
-    if (A1 === A2 && A2 === A3) return true;
-    if (A1 === A2 && A2 !== A3) return false;
-    if (B1 === B2 && B2 === B3) return false;
-
-    console.error("segmentInFrontof");
-
-    return false;
-};
-
-export function unionParallelLine(s1, s2) {
-    var minV = Number.POSITIVE_INFINITY;
-    var minP = null;
-    var maxV = Number.NEGATIVE_INFINITY;
-    var maxP = null;
-    [s1.p1, s1.p2, s2.p1, s2.p2].forEach(p => {
-        var projection = p.scalarProjectTo(s1.vector);
-        if (projection < minV) {
-            minV = projection;
-            minP = p;
-        }
-        if (projection > maxV) {
-            maxV = projection;
-            maxP = p;
-        }
-    });
-    return new Line(minP, maxP, false)
+    var dx = p2.x - p1.x;
+    var dy = p2.y - p1.y;
+    var D = p1.x * p2.y - p2.x * p1.y;
+    var discriminant = circle.rad ** 2 * (dx ** 2 + dy ** 2) - D ** 2;
+    if (Math.abs(discriminant) < 1e-6) { discriminant = 0; }
+    var sgn = dy < 0 ? -1 : 1;
+    switch (Math.sign(discriminant)) {
+        case 1:
+            var x1 = (D * dy + sgn * dx * discriminant ** 0.5) / (dx ** 2 + dy ** 2);
+            var y1 = (-D * dx + Math.abs(dy) * discriminant ** 0.5) / (dx ** 2 + dy ** 2);
+            var x2 = (D * dy - sgn * dx * discriminant ** 0.5) / (dx ** 2 + dy ** 2);
+            var y2 = (-D * dx - Math.abs(dy) * discriminant ** 0.5) / (dx ** 2 + dy ** 2);
+            return [new OrthogonalVector(x1, y1).add(circle.pos), new OrthogonalVector(x2, y2).add(circle.pos)]
+        case -1:
+            console.log('dis', circle.rad, dx ** 2 + dy ** 2, D, discriminant);
+            return []
+        default: // 0
+            var x = (D * dy) / (dx ** 2 + dy ** 2);
+            var y = (-D * dx) / (dx ** 2 + dy ** 2);
+            return [new OrthogonalVector(x, y).add(circle.pos)]
+    }
 }

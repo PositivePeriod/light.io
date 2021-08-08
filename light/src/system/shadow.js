@@ -1,6 +1,11 @@
-import { Polygon } from "../util/polygon.js";
+import { CircleLineIntersection, ShadowLine } from "../util/line.js";
+import { Polygon, ShadowPolygon } from "../util/polygon.js";
 import { UID } from "../util/uid.js";
 import { OrthogonalVector } from "../util/vector.js";
+import { Visualizer } from "./visualizer.js";
+
+
+// Reference : https://ncase.me/sight-and-light/draft6.html
 
 class Shadow {
     constructor() {
@@ -80,48 +85,9 @@ class Shadow {
         var segments = [];
         this.groups.forEach(group => {
             group.forEach(segment => {
-                segment.setMover(mover);
-                // checking overlapped edges
                 if (segment !== null && segments.every(s => !s.same(segment))) { segments.push(segment); }
             })
         })
-
-        // segments.forEach(l => { Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Cyan); }, [l]); })
-
-        // Checking intersecting edges
-        // var newSegments = [];
-        // var counter = 0;
-        // while (segments.length !== 0) {
-        //     if (counter++ > 1e3) {
-        //         console.error("Infinite checking intersecting edges");
-        //         return;
-        //     }
-        //     var segment = segments.pop();
-
-        //     var index = newSegments.findIndex(s => s.intersectWith(segment, false, true) !== null);
-        //     if (index === -1) {
-        //         newSegments.push(segment);
-        //     } else {
-        //         if (newSegments[index].vector.parallel(segment.vector)) {
-        //             var line = unionParallelLine(newSegments[index], segment);
-        //             newSegments.splice(index, 1);
-        //             segments.push(line);
-        //         } else {
-        //             var intersection = newSegments[index].intersectWith(segment);
-        //             var valid = [newSegments[index].p1, newSegments[index].p2, segment.p1, segment.p2].every(p => !p.same(intersection));
-
-        //             if (valid) {
-        //                 [newSegments[index].p1, newSegments[index].p2, segment.p1, segment.p2].forEach(point => {
-        //                     segments.push(new VisibilitySegment(point, intersection, false));
-        //                 });
-        //                 newSegments.splice(index, 1);
-        //             } else { newSegments.push(segment); }
-        //         }
-        //     }
-        // }
-        // newSegments = segments
-        // newSegments.forEach(l => { Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Cyan); }, [l]); })
-
         return segments
     }
 
@@ -154,12 +120,12 @@ class Shadow {
         if (T1 < 0) return null;
         if (T2 < 0 || T2 > 1) return null;
         // Return the POINT OF INTERSECTION
-        return { x: r_px + r_dx * T1, y: r_py + r_dy * T1, param: T1 };
+        return { "x": r_px + r_dx * T1, "y": r_py + r_dy * T1, "param": T1, "segment": segment };
 
     }
 
     calcVisiblility(mover) {
-        var angleLimit = 1e-6;
+        var angleLimit = 1e-12;
         var segments = this.getWalls(mover);
         var points = [];
         segments.forEach(segment => {
@@ -171,7 +137,7 @@ class Shadow {
             var point = points[j];
             var angle = Math.atan2(point.y - mover.pos.y, point.x - mover.pos.x);
             point.angle = angle;
-            if (angles.every(a => { return Math.abs(a - angle) > 1e-6 })) {
+            if (angles.every(a => { return Math.abs(a - angle) > angleLimit })) {
                 angles.push(angle - angleLimit, angle, angle + angleLimit);
             }
         }
@@ -179,13 +145,10 @@ class Shadow {
         var intersects = [];
         for (var i = 0; i < angles.length; i++) {
             var angle = angles[i];
-            // Calculate dx & dy from angle
-            var dx = Math.cos(angle);
-            var dy = Math.sin(angle);
             // Ray from center of screen to mouse
             var ray = {
                 a: { x: mover.pos.x, y: mover.pos.y },
-                b: { x: mover.pos.x + dx, y: mover.pos.y + dy }
+                b: { x: mover.pos.x + Math.cos(angle), y: mover.pos.y + Math.sin(angle) }
             };
             // Find CLOSEST intersection
             var closestIntersect = null;
@@ -204,16 +167,16 @@ class Shadow {
         }
         // Sort intersects by angle
         intersects.sort(function(a, b) { return a.angle - b.angle; });
-        var vertices = intersects.map(intersect => new OrthogonalVector(intersect.x, intersect.y));
+        var vertices = intersects.map(intersect => {
+            var vertex = new OrthogonalVector(intersect.x, intersect.y);
+            vertex.segment = intersect.segment;
+            return vertex
+        });
         vertices = this.optimizeVertices(vertices);
-
-        // Visualizer.addFunc("one-shot", function(layer, points) { this.drawPolygon(layer, points, { "color": Color.Cyan }); }, [vertices]);
-        // vertices.forEach((v, i) => {
-        //     Visualizer.addFunc("one-shot", function(layer) { this.drawCircle(layer, { "pos": v, "rad": 3 }, { "color": Color.Magenta }); }, []);
-        //     Visualizer.addFunc("one-shot", function(layer) { this.drawText(layer, v.add(new OrthogonalVector(0, i % 3 * 5)), "V" + i.toString(), { "color": Color.Magenta }); }, []);
-        // });
-
-        return { "visibleEdges": [], "visibleArea": new Polygon(vertices) }
+        var polygon = new Polygon(vertices);
+        var usedEdges = vertices.map(v => v.segment);
+        var edges = this.optimizeEdges(polygon.edges, usedEdges, mover.pos);
+        return { "visibleEdges": edges, "visibleArea": polygon }
     }
 
     optimizeVertices(vertices) {
@@ -222,17 +185,17 @@ class Shadow {
         for (let i = 2; i < vertices.length; i++) {
             var v1 = newV[newV.length - 1].minus(newV[newV.length - 2]);
             var v2 = vertices[i].minus(newV[newV.length - 1]);
-            if (v1.parallel(v2) || v1.r < 1e-6) { newV.pop(); }
+            if (v1.r < 1e-6 || v2.r < 1e-6 || v1.parallel(v2)) { newV.pop(); }
             newV.push(vertices[i]);
         }
         // Check parallelity of vertices[last]
         var v1 = newV[newV.length - 1].minus(newV[newV.length - 2]);
         var v2 = newV[0].minus(newV[newV.length - 1]);
-        if (v1.parallel(v2) || v1.r < 1e-6) { newV.pop(); }
+        if (v1.r < 1e-6 || v2.r < 1e-6 || v1.parallel(v2)) { newV.pop(); }
         // Check parallelity of vertices[0]
         var v1 = newV[0].minus(newV[newV.length - 1]);
         var v2 = newV[1].minus(newV[0]); // Error for special case? not edfined newV[1]
-        if (v1.parallel(v2) || v1.r < 1e-6) { newV.splice(0, 1); }
+        if (v1.r < 1e-6 || v2.r < 1e-6 || v1.parallel(v2)) { newV.splice(0, 1); }
         // Check again for being sure and some error
         var i = 0;
         var counter = 0;
@@ -246,6 +209,65 @@ class Shadow {
             if (v1.parallel(v2)) { newV.splice((i + 1) % newV.length, 1); } else { i++; }
         }
         return newV
+    }
+
+    optimizeEdges(polygonEdges, usedEdges, center) {
+        var visibleEdges = [];
+        for (let i = 0; i < polygonEdges.length; i++) {
+            const edge = polygonEdges[i];
+            for (let j = 0; j < usedEdges.length; j++) {
+                const e = usedEdges[j];
+                var isValid = edge.intersectWith(e) === true;
+                if (!isValid) { continue }
+                switch (e.type) {
+                    case 'line':
+                        var line = new ShadowLine(edge.p1, edge.p2, 'line');
+                        visibleEdges.push(line);
+                        break;
+                    case "arc":
+                        var index1 = i === polygonEdges.length - 1 ? 0 : i + 1;
+                        var index2 = i === 0 ? polygonEdges.length - 1 : i - 1;
+                        var inter1 = CircleLineIntersection(e.param, polygonEdges[index1]);
+                        var inter2 = CircleLineIntersection(e.param, polygonEdges[index2]);
+                        switch (inter1.length) {
+                            case 0:
+                                console.warn('Emtpy inter1', e.param, polygonEdges[index1]);
+                                break;
+                            case 1:
+                                var v1 = inter1[0];
+                                break;
+                            case 2:
+                                var v1 = inter1[0].minus(center).r < inter1[1].minus(center).r ? inter1[0] : inter1[1];
+                                break;
+                        }
+                        switch (inter2.length) {
+                            case 0:
+                                console.warn('Empty inter2', e.param, polygonEdges[index2]);
+                                break;
+                            case 1:
+                                var v2 = inter2[0];
+                                break;
+                            case 2:
+                                var v2 = inter2[0].minus(center).r < inter2[1].minus(center).r ? inter2[0] : inter2[1];
+                                break;
+                        }
+                        if (v1 && v2) {
+                            var startAngle = v1.minus(e.param.pos).theta;
+                            var endAngle = v2.minus(e.param.pos).theta;
+                            var param = { "pos": e.param.pos, "rad": e.param.rad, "startAngle": startAngle, "endAngle": endAngle };
+                            var line = new ShadowLine(edge.p1, edge.p2, 'arc', param);
+                            visibleEdges.push(line);
+                            break;
+                        }
+                    default:
+                        console.warn('Unknown type', e.type, e);
+                        console.trace();
+                        break;
+                }
+                break;
+            }
+        }
+        return visibleEdges
     }
 }
 

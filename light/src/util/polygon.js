@@ -1,10 +1,13 @@
-import { Visualizer } from "../system/visualizer.js";
-import { Line } from "./line.js";
+import { Line, ShadowLine } from "./line.js";
 
 export class Polygon {
     constructor(vertices) {
         this.vertices = vertices || [];
         this.n = this.vertices.length;
+        this.initEdge();
+    }
+
+    initEdge() {
         this.edges = []
         if (this.n > 0) {
             for (let i = 0; i < this.n - 1; i++) {
@@ -45,45 +48,33 @@ export class Polygon {
         return isIncluded;
     }
 
-    intersectWith(other) {
-        // var flag = false;
-        // for (let i = 0; i < this.edges.length; i++) {
-        //     for (let j = 0; j < other.edges.length; j++) {
-        //         if (this.edges[i].intersectWith(other.edges[j])) {
-        //             flag = true;
-        //             var a = i;
-        //             var b = j;
-        //             break;
-        //         }
-        //     }
-        //     if (flag) { break; }
-        // }
-        // if (flag) {
-        //     Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [this.edges[a]]);
-        //     Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line, Color.Green); }, [other.edges[b]]);
-        // }
-        // return flag
-        return this.edges.some(e1 => other.edges.some(e2 => e1.intersectWith(e2, false) !== null));
+    intersectWith(other, strict = false) {
+        if (strict) {
+            return this.edges.some(e1 => other.edges.some(e2 => e1.intersectWith(e2, false) === true));
+        } else {
+            return this.edges.some(e1 => other.edges.some(e2 => e1.intersectWith(e2, false) !== null));
+        }
     }
 
     intersectWithCircle(circle) {
-        // var flag = false;
-        // for (let i = 0; i < this.edges.length; i++) {
-        //     if (this.edges[i].distanceToPoint(circle.pos) < circle.rad) {
-        //         console.log(this.edges[i].distanceToPoint(circle.pos), circle.rad);
-        //         flag = true;
-        //         var a = i;
-        //         break;
-        //     }
-        // }
-        // this.edges.forEach(edge => {
-        // Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line); }, [edge]);
-        // })
-        // if (flag) {
-        //     Visualizer.addFunc("one-shot", function(layer, line) { this.drawLine(layer, line); }, [this.edges[a]]);
-        //     Visualizer.addFunc("one-shot", function(layer, circle) { this.drawCircle(layer, {"pos":circle.pos}); }, [circle]);
-        // }
-        // return flag
         return this.edges.some(e => e.distanceToPoint(circle.pos) < circle.rad);
+    }
+}
+
+export class ShadowPolygon extends Polygon {
+    constructor(vertices) {
+        super(vertices);
+    }
+
+    initEdge() {
+        this.edges = []
+        if (this.n > 0) {
+            for (let i = 0; i < this.n - 1; i++) {
+                var p1 = this.vertices[i];
+                var p2 = this.vertices[i + 1];
+                this.edges.push(new ShadowLine(p1, p2, 'line'));
+            }
+            this.edges.push(new ShadowLine(this.vertices[this.n - 1], this.vertices[0], 'line'));
+        }
     }
 }

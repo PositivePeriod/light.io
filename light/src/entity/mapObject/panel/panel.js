@@ -52,6 +52,7 @@ export class Panel extends MapObject {
         ObjectSystem.find("MovableObject").forEach(mover => {
             switch (this.shape) {
                 case "Rect":
+                    // TODO might be error, refer to ColorDoorPanel.update()
                     var visible = mover.visibleArea.intersectWith(this.polygon) || mover.visibleArea.includePoint(this.pos);
                     break;
                 case "Circle":

@@ -7,10 +7,10 @@ import { InputManager } from "../util/inputManager.js";
 import { Polygon } from "../util/polygon.js";
 
 export class MovableObject extends GameObject {
-    constructor(x, y, id, option) {
+    constructor(x, y, moverID, option) {
         super(x, y);
         this.input = option.input || new InputManager();
-        this.id = id;
+        this.moverID = moverID;
         this.type.push("MovableObject");
         this.color = option.color || Color.Gray;
 
@@ -63,6 +63,6 @@ export class MovableObject extends GameObject {
     draw() {
         Visualizer.addFunc("mover", function(layer, obj) { this.drawObject(layer, obj); }, [this]);
         Visualizer.addFunc("visibleArea", function(layer, obj) { this.drawvisibleArea(layer, obj); }, [this]);
-        Visualizer.addFunc("visibleEdge", function(layer, obj) { this.drawVisibleEdge(layer, obj); }, [this]);
+        Visualizer.addFunc("panel", function(layer, obj) { this.drawVisibleEdge(layer, obj); }, [this]);
     }
 }

@@ -199,7 +199,4 @@ export class Color {
         return this.hex + Math.round(alpha * 255).toString(16).toUpperCase();
     }
 
-    represent() {
-        return this[this.type]
-    }
 }

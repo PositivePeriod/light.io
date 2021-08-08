@@ -5,6 +5,7 @@ body {
     margin: 0;
     overflow: hidden;
     font: 4vw 'Raleway', sans-serif;
+    background-color: black;
 }
 
 canvas {

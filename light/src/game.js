@@ -1,5 +1,5 @@
 import { Angle, OrthogonalVector, PolarVector } from "./util/vector.js";
-import { VisibilitySegment } from "./util/line.js";
+import { Line, ShadowLine } from "./util/line.js";
 import { InputManager } from "./util/inputManager.js";
 import { Color } from "./util/color.js";
 
@@ -8,18 +8,18 @@ import { ObjectSystem } from "./system/objectSystem.js"
 import { Shadow } from "./system/shadow.js";
 
 import { mapData as mapIntro } from "./data/mapIntro.js"
-import { mapData as mapMain } from "./data/mapMain2.js"
+// import { mapData as mapMain } from "./data/mapMain2.js"
+import { mapData as mapMain } from "./data/stage/map1.js"
 
 import { BouncyBackground } from "./entity/mapObject/bouncyBg.js";
 import { MovingBackground, Particle } from "./entity/mapObject/movingBg.js";
-import { Panel } from "./entity/mapObject/panel/panel.js";
 import { RigidBackground } from "./entity/mapObject/rigidBg.js";
 import { MovableObject } from "./entity/movableObject.js";
 import { PositivePanel } from "./entity/mapObject/panel/positivePanel.js";
 import { NegativePanel } from "./entity/mapObject/panel/negativePanel.js";
 import { UncertainPanel } from "./entity/mapObject/panel/uncertainPanel.js";
 import { TimerPanel } from "./entity/mapObject/panel/timerPanel.js";
-import { ButtonPanel, StartPanel } from "./entity/mapObject/panel/buttonPanel.js";
+import { ButtonPanel, ColorDoorPanel, StartPanel } from "./entity/mapObject/panel/buttonPanel.js";
 
 var object = {
     "RB": RigidBackground,
@@ -33,7 +33,8 @@ var object = {
     "UP": UncertainPanel,
     "TP": TimerPanel,
     "BP": ButtonPanel,
-    "SP": StartPanel
+    "SP": StartPanel,
+    "CP": ColorDoorPanel,
 };
 
 export const OBJECT = Object.freeze(new Map(Object.entries(object)));
@@ -42,7 +43,7 @@ export const OBJECT = Object.freeze(new Map(Object.entries(object)));
 
 export class Game {
     // static fps = 10;
-    static fps = 30;
+    static fps = 20;
     static dt = 1 / this.fps;
     static score = 0;
 
@@ -50,7 +51,11 @@ export class Game {
         this.resetData = new Map();
 
         this.input = new InputManager();
-        // this.input.keyboard.listen("KeyG", this.addGameObject.bind(this));
+        this.input.keyboard.listen("KeyO", this.addGameObject.bind(this));
+
+        var drawFunc = function(layer, pos) { this.drawText(layer, new OrthogonalVector(50, 50), `MouseDown : ${pos.x}, ${pos.y}`, { "color": Color.White, 'size': 20 }); };
+        this.input.mouse.listen('mousedown', function(pos) { Visualizer.addFunc("one-shot", drawFunc, [pos]); });
+
         this.input.activate();
         Visualizer.activate();
 
@@ -64,13 +69,13 @@ export class Game {
         ObjectSystem.reset();
         Shadow.reset();
         Visualizer.reset();
+        this.initGameObjects(mapMain);
+
         Game.score = 0;
-        Game.time = 0;
+        // Game.time = 0;
         Game.maxTime = 0;
         Game.averageTime = 0;
         Game.turn = 0;
-
-        this.initGameObjects(mapMain);
     }
 
     initGameObjects(mapData) {
@@ -138,7 +143,7 @@ export class Game {
                         //     })
                         // }
                         // this.input.keyboard.listen(`Digit${++this.moverCounter}`, func.bind(obj));
-                        switch (obj.id) {
+                        switch (obj.moverID) {
                             case 0:
                                 obj.movingKey = {
                                     "KeyW": { x: 0, y: -1 },
@@ -214,16 +219,19 @@ export class Game {
                         var size = this.grid.size * 0.5;
                         obj.makeShape("Rect", { "width": size, "height": size });
                         break;
-                    case "C": // Circle
-                        obj = new RigidBackground(posX, posY);
-                        obj.makeShape("Circle", { "rad": this.grid.size * 0.5, "color": Color.Black });
+                    case "C":
+                        var option = mapData.object[mapData.map[y][x]] || {};
+                        var color = Color.findName(option.color);
+                        obj = new ColorDoorPanel(posX, posY, color);
+                        var size = this.grid.size;
+                        obj.makeShape("Rect", { "width": size, "height": size });
                         break;
                     case " ": // Empty Background
                         break;
                     case "L": // Line
                         var layer = Visualizer.findLayer("static");
                         var p1, p2;
-                        Visualizer.addWalls(layer, [new VisibilitySegment(p1, p2)]);
+                        Visualizer.addWalls(layer, [new Line(p1, p2, false)]);
                         break;
                     default:
                         break;
@@ -244,17 +252,19 @@ export class Game {
                                         var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
                                         var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
                                         this.addWalls("dynamic", [
-                                            new VisibilitySegment(p1, p3),
-                                            new VisibilitySegment(p1, p2),
-                                            new VisibilitySegment(p3, p4),
-                                            new VisibilitySegment(p2, p4)
+                                            new ShadowLine(p1, p3, 'line'),
+                                            new ShadowLine(p1, p2, 'line'),
+                                            new ShadowLine(p3, p4, 'line'),
+                                            new ShadowLine(p2, p4, 'line')
                                         ]);
                                     }
                                     Shadow.addFunc("dynamic", func, [obj]);
                                 } else {
                                     Shadow.addWalls("static", [
-                                        new VisibilitySegment(p1, p3), new VisibilitySegment(p1, p2),
-                                        new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)
+                                        new ShadowLine(p1, p3, 'line'),
+                                        new ShadowLine(p1, p2, 'line'),
+                                        new ShadowLine(p3, p4, 'line'),
+                                        new ShadowLine(p2, p4, 'line')
                                     ]);
                                 }
                                 break;
@@ -264,17 +274,8 @@ export class Game {
                                     var angle = Math.acos(obj.rad / dPos.r);
                                     var p1 = obj.pos.add(new PolarVector(obj.rad, dPos.theta + angle));
                                     var p2 = obj.pos.add(new PolarVector(obj.rad, dPos.theta - angle));
-                                    var line = new VisibilitySegment(p1, p2);
-                                    var angle1 = dPos.theta + angle;
-                                    var angle2 = dPos.theta - angle;
-                                    if (Angle.isBetween(angle1, dPos.theta, angle2)) {
-                                        line.setProp(mover, "CCW", angle1);
-                                        line.setProp(mover, "CW", angle2);
-                                    } else {
-                                        line.setProp(mover, "CCW", angle2);
-                                        line.setProp(mover, "CW", angle1);
-                                    }
-                                    line.obj = obj;
+                                    var param = { "pos": obj.pos, "rad": obj.rad };
+                                    var line = new ShadowLine(p1, p2, 'arc', param);
                                     this.addWalls("dynamic", [line]);
                                 }
                                 Shadow.addFunc("dynamic", func, [obj]);
@@ -333,68 +334,14 @@ export class Game {
             case "L": // Line
                 var p1 = new OrthogonalVector(downPos.x, downPos.y);
                 var p2 = new OrthogonalVector(upPos.x, upPos.y);
-                Shadow.addWalls(Shadow.findGroup("static"), [new VisibilitySegment(p1, p2)]);
+                Shadow.addWalls(Shadow.findGroup("static"), [new Line(p1, p2, false)]);
                 break;
             default:
                 console.log("Unknown block type: " + blockType);
                 return;
         }
         if (obj) {
-            ObjectSystem.add(obj);
-            if (obj.opaque) {
-                switch (obj.shape) {
-                    case "Rect":
-                        var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
-                        var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
-                        var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
-                        var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
-                        if (obj instanceof MovingBackground) {
-                            var func = function(group, mover, obj) {
-                                var p1 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y - obj.height / 2);
-                                var p2 = new OrthogonalVector(obj.pos.x - obj.width / 2, obj.pos.y + obj.height / 2);
-                                var p3 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y - obj.height / 2);
-                                var p4 = new OrthogonalVector(obj.pos.x + obj.width / 2, obj.pos.y + obj.height / 2);
-                                this.addWalls("dynamic", [
-                                    new VisibilitySegment(p1, p3),
-                                    new VisibilitySegment(p1, p2),
-                                    new VisibilitySegment(p3, p4),
-                                    new VisibilitySegment(p2, p4)
-                                ]);
-                            }
-                            Shadow.addFunc("dynamic", func, [obj]);
-                        } else {
-                            Shadow.addWalls("static", [
-                                new VisibilitySegment(p1, p3), new VisibilitySegment(p1, p2),
-                                new VisibilitySegment(p3, p4), new VisibilitySegment(p2, p4)
-                            ]);
-                        }
-                        break;
-                    case "Circle":
-                        var func = function(group, mover, obj) {
-                            var dPos = mover.pos.minus(obj.pos);
-                            var angle = Math.acos(obj.rad / dPos.r);
-                            var p1 = obj.pos.add(new PolarVector(obj.rad, dPos.theta + angle));
-                            var p2 = obj.pos.add(new PolarVector(obj.rad, dPos.theta - angle));
-                            var line = new VisibilitySegment(p1, p2);
-                            var angle1 = dPos.theta + angle;
-                            var angle2 = dPos.theta - angle;
-                            if (Angle.isBetween(angle1, dPos.theta, angle2)) {
-                                line.setProp(mover, "CCW", angle1);
-                                line.setProp(mover, "CW", angle2);
-                            } else {
-                                line.setProp(mover, "CCW", angle2);
-                                line.setProp(mover, "CW", angle1);
-                            }
-                            line.obj = obj;
-                            this.addWalls("dynamic", [line]);
-                        }
-                        Shadow.addFunc("dynamic", func, [obj]);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            obj.draw(); // TODO
+
         }
     }
 
@@ -403,8 +350,8 @@ export class Game {
 
         var movers = ObjectSystem.find("MovableObject");
         var maps = ObjectSystem.find("MapObject");
-        movers.forEach(mover => { mover.update(Game.dt, Game.turn); });
         maps.forEach(map => { map.update(Game.dt, Game.turn); });
+        movers.forEach(mover => { mover.update(Game.dt, Game.turn); });
         movers.forEach(mover => {
             var result = Shadow.calcVisiblility(mover);
             mover.visibleEdges = result.visibleEdges;
@@ -417,7 +364,7 @@ export class Game {
 
     static checkFPS(log = false) {
         var time = Date.now() - this.time;
-        if (time.turn > this.fps) { this.maxTime = Math.max(time, this.maxTime); } // Start after roughly 1s
+        if (this.turn > this.fps) { this.maxTime = Math.max(time, this.maxTime); } // Start after roughly 1s
         this.averageTime = (this.averageTime * this.turn + time) / (++this.turn);
         if (log && this.turn % (this.fps) === 0) { // iterate every roughly 1s
             console.clear();

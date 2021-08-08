@@ -223,6 +223,7 @@ class Visualizer {
 
         layer.ctx.beginPath();
         layer.ctx.arc(x, y, r, 0, 2 * Math.PI);
+        layer.ctx.closePath();
         if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
@@ -242,6 +243,7 @@ class Visualizer {
         layer.ctx.beginPath();
         layer.ctx.moveTo(x, y);
         layer.ctx.arc(x, y, r, CCWAngle, CWAngle);
+        layer.ctx.closePath();
         if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
@@ -260,6 +262,7 @@ class Visualizer {
 
         layer.ctx.beginPath();
         layer.ctx.arc(x, y, r, CCWAngle, CWAngle, true);
+        layer.ctx.closePath();
         if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
@@ -279,14 +282,17 @@ class Visualizer {
         if (option.stroke) {
             layer.ctx.beginPath();
             layer.ctx.arc(x, y, outerR, 0, 2 * Math.PI);
+            layer.ctx.closePath();
             layer.ctx.stroke();
             layer.ctx.beginPath();
             layer.ctx.arc(x, y, innerR, 0, 2 * Math.PI);
+            layer.ctx.closePath();
             layer.ctx.stroke();
         } else {
             layer.ctx.beginPath();
             layer.ctx.arc(x, y, outerR, 0, 2 * Math.PI, false);
             layer.ctx.arc(x, y, innerR, 0, 2 * Math.PI, true);
+            layer.ctx.closePath();
             layer.ctx.fill();
         }
         layer.ctx.restore();
@@ -326,6 +332,7 @@ class Visualizer {
         layer.ctx.moveTo(rightVertex[0], rightVertex[1]);
         layer.ctx.lineTo(rightVertex[0] + dir[0] * w, rightVertex[1]);
         layer.ctx.lineTo(rightVertex[0], rightVertex[1] + dir[1] * h);
+        layer.ctx.closePath();
         if (option.stroke) { layer.ctx.stroke(); } else { layer.ctx.fill(); }
         layer.ctx.restore();
     }
@@ -367,11 +374,17 @@ class Visualizer {
     }
 
     drawVisibleEdge(layer, mover) {
+        var lineWidth = 2;
+
         layer.ctx.save();
         layer.ctx.globalCompositeOperation = "screen";
         layer.ctx.strokeStyle = mover.color.RGBA();
+        layer.ctx.lineWidth = lineWidth;
 
-        mover.visibleEdges.forEach(line => { line.draw(layer, mover, this); })
+        mover.visibleEdges.forEach(edge => {
+            var path = edge.getPath();
+            layer.ctx.stroke(path);
+        })
         layer.ctx.restore();
     }
 
@@ -380,10 +393,12 @@ class Visualizer {
         var x = floor(pos.x);
         var y = floor(pos.y);
         var color = option.color || Color.random();
+        var size = option.size || 14;
 
         layer.ctx.save();
         layer.ctx.fillStyle = color.RGBA();
         layer.ctx.strokeStyle = color.RGBA();
+        layer.ctx.font = `${size}px Noto Sans, sans-serif`;
 
         var func = option.stroke ? "strokeText" : "fillText";
         if (typeof text === "string") {
