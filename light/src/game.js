@@ -9,7 +9,7 @@ import { Shadow } from "./system/shadow.js";
 
 import { mapData as mapIntro } from "./data/mapIntro.js"
 // import { mapData as mapMain } from "./data/mapMain2.js"
-import { mapData as mapMain } from "./data/stage/map1.js"
+import { mapData as mapMain } from "./data/stage/map1-3.js"
 
 import { BouncyBackground } from "./entity/mapObject/bouncyBg.js";
 import { MovingBackground, Particle } from "./entity/mapObject/movingBg.js";

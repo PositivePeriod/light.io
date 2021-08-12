@@ -100,7 +100,7 @@ export class ColorDoorPanel extends Panel {
     update() {
         this.observers = [];
         ObjectSystem.find("MovableObject").forEach(mover => {
-            console.log('update', mover.color.name);
+            // console.log('update', mover.color.name);
             switch (this.shape) {
                 case "Rect":
                     if (this.pseudoObject === null) {
@@ -112,21 +112,21 @@ export class ColorDoorPanel extends Panel {
                                     const e2 = this.polygon.edges[i];
                                     var inter = e1.intersectWith(e2);
                                     if (inter === true) {
-                                        console.log('interTrue', e1, e2);
-                                        [e1, e2].forEach((edge, index) => {
-                                            Visualizer.addFunc("one-shot", function(layer) { this.drawText(layer, edge.center, 'V' + index.toString()); }, []);
-                                        })
+                                        // console.log('interTrue', e1, e2);
+                                        // [e1, e2].forEach((edge, index) => {
+                                        //     Visualizer.addFunc("one-shot", function(layer) { this.drawText(layer, edge.center, 'V' + index.toString()); }, []);
+                                        // })
                                         return true
                                     }
                                     if (inter !== null) { counter++; }
                                 }
-                                console.log('counter', counter);
+                                // console.log('counter', counter);
                                 return counter >= 2
                             });
-                        console.log(mover.visibleArea.includePoint(this.pos), visible);
+                        // console.log(mover.visibleArea.includePoint(this.pos), visible);
                         // var visible = mover.visibleArea.intersectWith(this.polygon) || mover.visibleArea.includePoint(this.pos);
                     } else {
-                        console.log('rectNotNull');
+                        // console.log('rectNotNull');
                         var visible = this.pseudoObject.edges.some(edge => mover.visibleEdges.some(e => {
                             // [edge, e].forEach((eg, index) => {
                             //     Visualizer.addFunc("one-shot", function(layer) { this.drawText(layer, eg.center, 'W' + index.toString()); }, []);
@@ -137,7 +137,7 @@ export class ColorDoorPanel extends Panel {
                     break;
                 case "Circle":
                     // TODO, might be error
-                    console.log('circle');
+                    // console.log('circle');
                     var visible = mover.visibleArea.intersectWithCircle(this) || mover.visibleArea.includePoint(this.pos);
                     break;
                 default:
@@ -153,7 +153,7 @@ export class ColorDoorPanel extends Panel {
             var colors = this.observers.map(observer => observer.color);
             this.color = Color.add(colors);
         }
-        console.log(this.color.name);
+        console.log(this.onColor.name, this.color.name);
         var state = this.color === this.onColor ? "R" : " ";
         if (this.state === state) { return } else { this.refresh(state); }
     }
