@@ -28,3 +28,5 @@ https://playcanvas.com/#!
 https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
 
 edge 두 개가 점에서 만날 때 오류 나는 경우가 존재 mapIntro , 가장 왼쪽 가장 아래에서 한 칸 위
+
+대각선으로 panel 판단 넘어가는 오류 해결해야 함 - ----- TODOTODOTODO
